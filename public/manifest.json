@@ -9,20 +9,20 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/brand/saggio-icon-512.png",
+      "src": "/brand/saggio-launch-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "maskable any"
+      "purpose": "maskable"
     },
     {
-      "src": "/brand/saggio-icon-192.png",
-      "sizes": "192x192",
+      "src": "/brand/saggio-isotipo-hd.png",
+      "sizes": "1024x1024 512x512",
       "type": "image/png",
-      "purpose": "maskable any"
+      "purpose": "any"
     },
     {
-      "src": "/brand/saggio-icon-transparent.png",
-      "sizes": "512x512",
+      "src": "/brand/saggio-isotipo.png",
+      "sizes": "192x192 512x512",
       "type": "image/png",
       "purpose": "any"
     }

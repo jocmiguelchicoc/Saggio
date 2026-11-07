@@ -1,11 +1,10 @@
-const CACHE_NAME = 'saggio-cache-v2';
+const CACHE_NAME = 'saggio-cache-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/brand/saggio-icon-512.png',
-  '/brand/saggio-icon-192.png',
-  '/brand/saggio-icon-transparent.png',
+  '/brand/saggio-launch-512.png',
+  '/brand/saggio-isotipo-hd.png',
   '/brand/saggio-isotipo.png',
   '/icon.svg'
 ];
