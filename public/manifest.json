@@ -15,14 +15,26 @@
       "purpose": "maskable"
     },
     {
+      "src": "/brand/saggio-launch-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
       "src": "/brand/saggio-isotipo-hd.png",
-      "sizes": "1024x1024 512x512",
+      "sizes": "1024x1024",
       "type": "image/png",
       "purpose": "any"
     },
     {
       "src": "/brand/saggio-isotipo.png",
-      "sizes": "192x192 512x512",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/brand/saggio-isotipo-192.png",
+      "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     }

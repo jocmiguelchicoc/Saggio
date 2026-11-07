@@ -1,11 +1,13 @@
-const CACHE_NAME = 'saggio-cache-v3';
+const CACHE_NAME = 'saggio-cache-v5';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
   '/brand/saggio-launch-512.png',
+  '/brand/saggio-launch-192.png',
   '/brand/saggio-isotipo-hd.png',
   '/brand/saggio-isotipo.png',
+  '/brand/saggio-isotipo-192.png',
   '/icon.svg'
 ];
 
@@ -47,7 +49,7 @@ self.addEventListener('fetch', (event) => {
               cache.put(event.request, networkResponse);
             });
           }
-        }).catch(() => {});
+        }).catch(() => { });
         return cachedResponse;
       }
 

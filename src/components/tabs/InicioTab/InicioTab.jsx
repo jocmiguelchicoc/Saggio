@@ -43,7 +43,7 @@ export function InicioTab({ period, data, onNavigateTab, onOpenSettings }) {
             <img
               src="/brand/saggio-isotipo.png"
               alt="Saggio"
-              style={{ width: 22, height: 24, objectFit: 'contain', filter: 'drop-shadow(0 2px 4px rgba(16, 185, 129, 0.25))' }}
+              style={{ width: 24, height: 24, objectFit: 'contain', filter: 'drop-shadow(0 2px 5px rgba(16, 185, 129, 0.3))' }}
             />
             <span style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
               Te queda este mes
