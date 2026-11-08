@@ -14,10 +14,18 @@ import { AnioTab } from './components/tabs/AnioTab/AnioTab.jsx';
 
 export function App() {
   const [activeTab, setActiveTab] = useState('inicio');
+  const [tarjetasSubTab, setTarjetasSubTab] = useState('tarjetas');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const period = usePeriod();
   const data = useFinanceData();
+
+  const handleNavigateTab = (tab, subTab) => {
+    setActiveTab(tab);
+    if (subTab) {
+      setTarjetasSubTab(subTab);
+    }
+  };
 
   const isAnioTab = activeTab === 'anio';
   const isCurrentPeriod = isAnioTab
@@ -70,11 +78,18 @@ export function App() {
           <InicioTab
             period={period}
             data={data}
-            onNavigateTab={setActiveTab}
+            onNavigateTab={handleNavigateTab}
             onOpenSettings={() => setIsSettingsOpen(true)}
           />
         )}
-        {activeTab === 'tarjetas' && <TarjetasTab period={period} data={data} />}
+        {activeTab === 'tarjetas' && (
+          <TarjetasTab
+            period={period}
+            data={data}
+            subTab={tarjetasSubTab}
+            onSelectSubTab={setTarjetasSubTab}
+          />
+        )}
         {activeTab === 'fijos' && <FijosTab period={period} data={data} />}
         {activeTab === 'extras' && <ExtrasTab period={period} data={data} />}
         {activeTab === 'anio' && <AnioTab period={period} data={data} />}

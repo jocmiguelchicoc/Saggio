@@ -6,6 +6,7 @@ import { FixedPayModal } from './FixedPayModal.jsx';
 import { calculateFixedMonthStatus } from '../../../core/calculations.js';
 import { formatCOP, getCurrentColombiaDate } from '../../../core/formatters.js';
 import { fixedRepository } from '../../../data/repositories/fixedRepository.js';
+import { creditsRepository } from '../../../data/repositories/creditsRepository.js';
 
 export function FijosTab({ period, data }) {
   const { selectedYM, currentRealYM, currentRealQuincena } = period;
@@ -65,6 +66,18 @@ export function FijosTab({ period, data }) {
   const handleTogglePay = async (item) => {
     if (item.isPaid) {
       await fixedRepository.unmarkPaid(item.id, selectedYM);
+      // Si se desmarca la cuota de AV Villas, revertir pago en creditPayments si fue registrado automáticamente
+      if (item.name.toLowerCase().includes('av villas')) {
+        try {
+          const payments = await creditsRepository.getPayments('av_villas_personal');
+          const synced = payments.find((p) => p.ym === selectedYM && p.type === 'cuota' && p.notes && p.notes.includes('Gastos Fijos'));
+          if (synced && synced.id) {
+            await creditsRepository.deletePayment(synced.id);
+          }
+        } catch (err) {
+          console.warn('Error al desmarcar pago de crédito sincronizado:', err);
+        }
+      }
     } else {
       // Si la obligación está en cero, abrimos el modal para pedir el valor pagado
       if ((Number(item.amount) || 0) === 0) {
@@ -73,6 +86,29 @@ export function FijosTab({ period, data }) {
       } else {
         const today = getCurrentColombiaDate();
         await fixedRepository.markPaid(item, selectedYM, today);
+
+        // Si es la cuota de Banco AV Villas, sincronizar automáticamente con el módulo de Créditos
+        if (item.name.toLowerCase().includes('av villas')) {
+          try {
+            const credit = await creditsRepository.getById('av_villas_personal');
+            if (credit) {
+              const payments = await creditsRepository.getPayments('av_villas_personal');
+              const alreadyPaid = payments.some((p) => p.ym === selectedYM && p.type === 'cuota');
+              if (!alreadyPaid) {
+                await creditsRepository.addPayment({
+                  creditId: 'av_villas_personal',
+                  type: 'cuota',
+                  ym: selectedYM,
+                  amount: item.amount || credit.nextQuotaAmount || 340000,
+                  date: today,
+                  notes: 'Cuota pagada automáticamente desde Gastos Fijos (Quincena 30)',
+                });
+              }
+            }
+          } catch (err) {
+            console.warn('Error al sincronizar cuota fija con crédito:', err);
+          }
+        }
       }
     }
   };
@@ -81,6 +117,28 @@ export function FijosTab({ period, data }) {
     await fixedRepository.markPaid(item, selectedYM, date, amount);
     if (saveAsHabitual) {
       await fixedRepository.update(item.id, { amount });
+    }
+
+    if (item.name.toLowerCase().includes('av villas')) {
+      try {
+        const credit = await creditsRepository.getById('av_villas_personal');
+        if (credit) {
+          const payments = await creditsRepository.getPayments('av_villas_personal');
+          const alreadyPaid = payments.some((p) => p.ym === selectedYM && p.type === 'cuota');
+          if (!alreadyPaid) {
+            await creditsRepository.addPayment({
+              creditId: 'av_villas_personal',
+              type: 'cuota',
+              ym: selectedYM,
+              amount: Number(amount) || credit.nextQuotaAmount || 340000,
+              date: date || getCurrentColombiaDate(),
+              notes: 'Cuota pagada automáticamente desde Gastos Fijos (Quincena 30)',
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('Error al sincronizar cuota fija modal con crédito:', err);
+      }
     }
   };
 

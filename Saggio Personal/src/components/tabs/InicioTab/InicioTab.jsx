@@ -2,11 +2,11 @@ import React from 'react';
 import { calculateMonthOverview } from '../../../core/calculations.js';
 import { formatCOP } from '../../../core/formatters.js';
 import { QUINCENA_LABELS } from '../../../core/constants.js';
-import { Calendar, CreditCard, CalendarCheck2, ArrowUpDown, ChevronRight, Wallet } from 'lucide-react';
+import { Calendar, CreditCard, Landmark, CalendarCheck2, ArrowUpDown, ChevronRight, Wallet, ShieldCheck } from 'lucide-react';
 
 export function InicioTab({ period, data, onNavigateTab, onOpenSettings }) {
   const { selectedYM, currentRealYM, currentRealQuincena } = period;
-  const { cards, allCardPayments, fixedList, allFixedPayments, allMoves, settings } = data;
+  const { cards, allCardPayments, fixedList, allFixedPayments, allMoves, settings, credits = [] } = data;
 
   const fixedPaymentsInMonth = allFixedPayments.filter((fp) => fp.ym === selectedYM);
   const movesInMonth = allMoves.filter((m) => m.date && m.date.startsWith(selectedYM));
@@ -462,6 +462,66 @@ export function InicioTab({ period, data, onNavigateTab, onOpenSettings }) {
           </div>
           <ChevronRight size={18} color="var(--text-muted)" />
         </div>
+
+        {/* Crédito Banco AV Villas */}
+        {credits && credits.length > 0 && (
+          <div
+            onClick={() => onNavigateTab && onNavigateTab('tarjetas', 'creditos')}
+            className="card"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '16px 18px',
+              margin: 0,
+              cursor: 'pointer',
+              borderRadius: 18,
+              border: '1px solid rgba(59, 130, 246, 0.25)',
+              backgroundColor: 'rgba(19, 29, 46, 0.65)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div
+                style={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: 12,
+                  backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                  color: '#f87171',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Landmark size={20} />
+              </div>
+              <div>
+                <div style={{ fontSize: '0.94rem', fontWeight: 700, color: '#ffffff' }}>
+                  {credits[0].name || 'Crédito Banco AV Villas'}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  Saldo: <strong style={{ color: '#38bdf8' }}>{formatCOP(credits[0].currentBalance)}</strong> · Cuotas: {credits[0].currentTermPaid}/{credits[0].termTotal} ({credits[0].currentTermRemaining} restantes)
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span
+                style={{
+                  fontSize: '0.72rem',
+                  color: '#34d399',
+                  fontWeight: 700,
+                  backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                  padding: '2px 8px',
+                  borderRadius: 999,
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                }}
+              >
+                Al día
+              </span>
+              <ChevronRight size={18} color="var(--text-muted)" />
+            </div>
+          </div>
+        )}
 
         {/* Fijos */}
         <div

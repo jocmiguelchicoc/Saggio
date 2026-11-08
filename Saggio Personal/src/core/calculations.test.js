@@ -5,7 +5,9 @@ import {
   calculateFixedMonthStatus,
   calculateMonthOverview,
   calculateAnnualSummary,
+  calculateCreditMetrics,
 } from './calculations.js';
+import { parseAvVillasTokens } from './avVillasParser.js';
 import { getQuincenaFromDate } from './formatters.js';
 import { CARD_PAYMENT_TYPES } from './constants.js';
 
@@ -348,5 +350,48 @@ describe('Cálculos financieros - Reglas de Negocio', () => {
     const tarjetas = summary.categoriesList.find(c => c.category === 'Tarjetas de crédito');
     expect(tarjetas.subItems[0].name).toBe('American Express (*2900)');
     expect(tarjetas.subItems[0].amount).toBe(300000);
+  });
+
+  it('Crédito Bancario AV Villas: Saldo $8.641.103 con 29 cuotas de 72 muestra 40% pagado y 43 restantes', () => {
+    const credit = {
+      id: 'av_villas_personal',
+      originalAmount: 11971584,
+      currentBalance: 8641103,
+      termTotal: 72,
+      currentTermPaid: 29,
+      rateEA: 24.90,
+      insuranceMonthly: 33444,
+      nextQuotaAmount: 334035,
+    };
+    const payments = [
+      { id: 1, type: 'abono', amount: 2000000, cuotasAhorradas: 19 },
+      { id: 2, type: 'abono', amount: 600000, cuotasAhorradas: 4 },
+      { id: 3, type: 'cuota', amount: 340000 },
+    ];
+
+    const metrics = calculateCreditMetrics(credit, payments);
+    expect(metrics.termRemaining).toBe(43);
+    expect(metrics.porcentajePagado).toBe(40);
+    expect(metrics.capitalAmortizado).toBe(3330481);
+    expect(metrics.totalAbonosExtraordinarios).toBe(2600000);
+    expect(metrics.totalCuotasAhorradas).toBe(23);
+  });
+
+  it('Parser AV Villas: extrae correctamente cuotas pagadas 28, pendientes 44 y capital $8.778.149 de tokens', () => {
+    const tokensP1 = [
+      'AV Villas', 'CUOTA FIJA', '$11,971,584.00', '24.90', '24.90',
+      '072', '28', '44', '0', '$8,778,149.00',
+      '$0.00', '$71,137.00', '$140,086.00', '$166,595.00', 'TOTAL PAGADO', '$340,000.00'
+    ];
+    const tokensP2 = [
+      'PAGUE HASTA:', 'TOTAL A PAGAR:', '$339,498.00', '02NOV2026'
+    ];
+
+    const parsed = parseAvVillasTokens(tokensP1, tokensP2);
+    expect(parsed.cuotasPagadas).toBe(28);
+    expect(parsed.cuotasPendientes).toBe(44);
+    expect(parsed.capitalTotal).toBe(8778149);
+    expect(parsed.proximaCuota).toBe(339498);
+    expect(parsed.fechaLimitePago).toBe('02 de Noviembre de 2026');
   });
 });

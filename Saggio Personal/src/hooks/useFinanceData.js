@@ -31,6 +31,8 @@ export function useFinanceData() {
   const allFixedPayments = useLiveQuery(() => db.fixedPayments.toArray(), [], []);
   const allMoves = useLiveQuery(() => db.moves.toArray(), [], []);
   const settingsList = useLiveQuery(() => db.settings.toArray(), [], []);
+  const creditsList = useLiveQuery(() => db.credits.toArray(), [], []);
+  const allCreditPayments = useLiveQuery(() => db.creditPayments.toArray(), [], []);
 
   const settings = settingsList && settingsList.length > 0 ? settingsList[0] : null;
 
@@ -41,6 +43,8 @@ export function useFinanceData() {
     fixedList: fixedList || [],
     allFixedPayments: allFixedPayments || [],
     allMoves: allMoves || [],
+    credits: creditsList || [],
+    allCreditPayments: allCreditPayments || [],
     settings,
   };
 }

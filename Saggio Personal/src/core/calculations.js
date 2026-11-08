@@ -537,3 +537,63 @@ export function calculateAnnualSummary({
     maxMonthSpent,
   };
 }
+
+/**
+ * Calcula las métricas financieras de un crédito bancario de libre inversión/consumo
+ */
+export function calculateCreditMetrics(credit, payments = []) {
+  if (!credit) return null;
+
+  const originalAmount = Number(credit.originalAmount) || 0;
+  const currentBalance = Number(credit.currentBalance) || 0;
+  const termTotal = Number(credit.termTotal) || 72;
+  const termPaid = Number(credit.currentTermPaid) || 0;
+  const termRemaining = Math.max(0, termTotal - termPaid);
+
+  const capitalAmortizado = Math.max(0, originalAmount - currentBalance);
+  const porcentajePagado = termTotal > 0 ? Math.min(100, Math.round((termPaid / termTotal) * 100)) : 0;
+
+  // Totales de pagos registrados
+  let totalPaid = 0;
+  let totalAbonosExtraordinarios = 0;
+  let totalCuotasOrdinarias = 0;
+  let totalCuotasAhorradas = 0;
+
+  for (const p of payments) {
+    const val = Number(p.amount) || 0;
+    totalPaid += val;
+    if (p.type === 'abono') {
+      totalAbonosExtraordinarios += val;
+      if (p.cuotasAhorradas) totalCuotasAhorradas += Number(p.cuotasAhorradas);
+    } else if (p.type === 'cuota') {
+      totalCuotasOrdinarias += val;
+    }
+  }
+
+  // Tasa de interés mensual estimada a partir de la EA: i = (1 + EA)^(1/12) - 1
+  const rateEA = Number(credit.rateEA) || 24.90;
+  const monthlyRate = Math.pow(1 + rateEA / 100, 1 / 12) - 1;
+  const nextMonthInterest = Math.round(currentBalance * monthlyRate);
+  const insuranceMonthly = Number(credit.insuranceMonthly) || 33444;
+  const estimatedQuota = Number(credit.nextQuotaAmount) || Number(credit.monthlyQuotaEstimate) || 334035;
+  const estimatedCapital = Math.max(0, estimatedQuota - nextMonthInterest - insuranceMonthly);
+
+  return {
+    originalAmount,
+    currentBalance,
+    capitalAmortizado,
+    termTotal,
+    termPaid,
+    termRemaining,
+    porcentajePagado,
+    totalPaid,
+    totalAbonosExtraordinarios,
+    totalCuotasOrdinarias,
+    totalCuotasAhorradas,
+    monthlyRate,
+    nextMonthInterest,
+    insuranceMonthly,
+    estimatedQuota,
+    estimatedCapital,
+  };
+}

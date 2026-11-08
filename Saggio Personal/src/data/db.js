@@ -12,8 +12,12 @@ export class MisCuentasDB extends Dexie {
       moves: '++id, kind, date, cat',
       settings: 'id',
     });
+
+    this.version(2).stores({
+      credits: 'id, name, bank',
+      creditPayments: '++id, creditId, type, ym, date',
+    });
   }
 }
 
 export const db = new MisCuentasDB();
-
