@@ -1,4 +1,4 @@
-const CACHE_NAME = 'saggio-cache-v7';
+const CACHE_NAME = 'saggio-cache-v8';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

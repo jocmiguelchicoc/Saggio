@@ -86,6 +86,8 @@ export function CreditoCard({
             color: '#34d399',
             fontSize: '0.75rem',
             fontWeight: 700,
+            whiteSpace: 'nowrap',
+            flexShrink: 0,
           }}
         >
           <ShieldCheck size={14} />

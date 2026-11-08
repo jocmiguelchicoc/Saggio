@@ -476,15 +476,15 @@ export function InicioTab({ period, data, onNavigateTab, onOpenSettings }) {
               margin: 0,
               cursor: 'pointer',
               borderRadius: 18,
-              border: '1px solid rgba(59, 130, 246, 0.25)',
-              backgroundColor: 'rgba(19, 29, 46, 0.65)',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0, flex: 1 }}>
               <div
                 style={{
                   width: 42,
                   height: 42,
+                  minWidth: 42,
+                  flexShrink: 0,
                   borderRadius: 12,
                   backgroundColor: 'rgba(239, 68, 68, 0.15)',
                   color: '#f87171',
@@ -495,31 +495,24 @@ export function InicioTab({ period, data, onNavigateTab, onOpenSettings }) {
               >
                 <Landmark size={20} />
               </div>
-              <div>
-                <div style={{ fontSize: '0.94rem', fontWeight: 700, color: '#ffffff' }}>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: '0.94rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                   Créditos Bancarios
                 </div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  {credits[0].bank || 'Banco AV Villas'}: Saldo <strong style={{ color: '#38bdf8' }}>{formatCOP(credits[0].currentBalance)}</strong> · Cuotas: {credits[0].currentTermPaid}/{credits[0].termTotal} ({credits[0].currentTermRemaining} restantes)
+                <div
+                  style={{
+                    fontSize: '0.75rem',
+                    color: 'var(--text-muted)',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  Saldo: {formatCOP(credits[0].currentBalance)} · Cuota {credits[0].currentTermPaid} de {credits[0].termTotal}
                 </div>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span
-                style={{
-                  fontSize: '0.72rem',
-                  color: '#34d399',
-                  fontWeight: 700,
-                  backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                  padding: '2px 8px',
-                  borderRadius: 999,
-                  border: '1px solid rgba(16, 185, 129, 0.3)',
-                }}
-              >
-                Al día
-              </span>
-              <ChevronRight size={18} color="var(--text-muted)" />
-            </div>
+            <ChevronRight size={18} color="var(--text-muted)" style={{ flexShrink: 0, marginLeft: 8 }} />
           </div>
         )}
 
