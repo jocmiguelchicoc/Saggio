@@ -1,8 +1,0 @@
-{
-  "name": "saggio-app-root",
-  "private": true,
-  "scripts": {
-    "build": "cd \"Saggio Personal\" && pnpm run build",
-    "dev": "cd \"Saggio Personal\" && pnpm run dev"
-  }
-}

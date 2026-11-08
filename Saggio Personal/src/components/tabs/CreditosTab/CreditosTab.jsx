@@ -242,3 +242,4 @@ export function CreditosTab({ period, data }) {
     </div>
   );
 }
+
