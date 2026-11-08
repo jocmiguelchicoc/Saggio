@@ -497,10 +497,10 @@ export function InicioTab({ period, data, onNavigateTab, onOpenSettings }) {
               </div>
               <div>
                 <div style={{ fontSize: '0.94rem', fontWeight: 700, color: '#ffffff' }}>
-                  {credits[0].name || 'Crédito Banco AV Villas'}
+                  Créditos Bancarios
                 </div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  Saldo: <strong style={{ color: '#38bdf8' }}>{formatCOP(credits[0].currentBalance)}</strong> · Cuotas: {credits[0].currentTermPaid}/{credits[0].termTotal} ({credits[0].currentTermRemaining} restantes)
+                  {credits[0].bank || 'Banco AV Villas'}: Saldo <strong style={{ color: '#38bdf8' }}>{formatCOP(credits[0].currentBalance)}</strong> · Cuotas: {credits[0].currentTermPaid}/{credits[0].termTotal} ({credits[0].currentTermRemaining} restantes)
                 </div>
               </div>
             </div>

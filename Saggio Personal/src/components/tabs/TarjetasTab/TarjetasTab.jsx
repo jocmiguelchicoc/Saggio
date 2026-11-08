@@ -156,7 +156,7 @@ export function TarjetasTab({ period, data, subTab: controlledSubTab, onSelectSu
           }}
         >
           <Landmark size={17} />
-          <span>Crédito AV Villas ({credits.length})</span>
+          <span>Créditos Bancarios ({credits.length})</span>
         </button>
       </div>
 
