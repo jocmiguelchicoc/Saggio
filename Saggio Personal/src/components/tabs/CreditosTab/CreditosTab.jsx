@@ -7,13 +7,13 @@ import { CreditPayModal } from './CreditPayModal.jsx';
 import { CreditAdjustModal } from './CreditAdjustModal.jsx';
 import { CreditHistoryModal } from './CreditHistoryModal.jsx';
 import { EmptyState } from '../../common/EmptyState.jsx';
-import { formatCOP } from '../../../core/formatters.js';
+import { formatCOP, shiftMonth } from '../../../core/formatters.js';
 import { creditsRepository } from '../../../data/repositories/creditsRepository.js';
 import { fixedRepository } from '../../../data/repositories/fixedRepository.js';
 
 export function CreditosTab({ period, data }) {
   const { selectedYM } = period;
-  const { credits = [], allCreditPayments = [], fixedList = [] } = data;
+  const { credits = [], allCreditPayments = [], fixedList = [], allFixedPayments = [] } = data;
 
   // Estados de modales
   const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -71,12 +71,11 @@ export function CreditosTab({ period, data }) {
     await creditsRepository.addPayment(abonoData);
   };
 
-  // Confirmación de Pago de Cuota (con sincronización opcional con Gastos Fijos)
+  // Confirmación de Pago de Cuota (con sincronización inteligente con Gastos Fijos)
   const handleConfirmPay = async (payData) => {
     await creditsRepository.addPayment(payData);
 
-    // Si existe un gasto fijo enlazado ("Cuota Banco AV Villas") y no está marcado como pagado este mes,
-    // sincronizarlo automáticamente para que se descuente también de Gastos Fijos
+    // Sincronizar automáticamente con Gastos Fijos
     try {
       const fixedMatch = fixedList.find(
         (f) =>
@@ -84,7 +83,13 @@ export function CreditosTab({ period, data }) {
           (activeCredit && activeCredit.fixedLinkedName && f.name.toLowerCase().includes(activeCredit.fixedLinkedName.toLowerCase()))
       );
       if (fixedMatch) {
-        await fixedRepository.markPaid(fixedMatch, payData.ym, payData.date, payData.amount);
+        // Si la cuota del mes actual ya fue pagada (ej. Noviembre), sincronizar la del siguiente mes (Diciembre) por anticipado
+        const existingPayments = allFixedPayments.filter(fp => fp.fixedId === fixedMatch.id);
+        let targetYM = payData.ym;
+        if (existingPayments.some(fp => fp.ym === targetYM)) {
+          targetYM = shiftMonth(targetYM, 1);
+        }
+        await fixedRepository.markPaid(fixedMatch, targetYM, payData.date, payData.amount);
       }
     } catch (err) {
       console.warn('Sincronización con fijos no requerida o ya completada:', err);

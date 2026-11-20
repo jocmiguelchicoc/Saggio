@@ -1,14 +1,22 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { calculateMonthOverview } from '../../../core/calculations.js';
 import { formatCOP } from '../../../core/formatters.js';
 import { QUINCENA_LABELS } from '../../../core/constants.js';
 import { Calendar, CreditCard, Landmark, CalendarCheck2, ArrowUpDown, ChevronRight, Wallet, ShieldCheck } from 'lucide-react';
+import { QuincenaDetailModal } from './QuincenaDetailModal.jsx';
 
 export function InicioTab({ period, data, onNavigateTab, onOpenSettings }) {
   const { selectedYM, currentRealYM, currentRealQuincena } = period;
-  const { cards, allCardPayments, fixedList, allFixedPayments, allMoves, settings, credits = [] } = data;
+  const { cards, allCardPayments, fixedList, allFixedPayments, allMoves, settings, credits = [], allCreditPayments = [] } = data;
 
-  const fixedPaymentsInMonth = allFixedPayments.filter((fp) => fp.ym === selectedYM);
+  // Estado para el modal de detalle de movimientos de la quincena
+  const [isQDetailOpen, setIsQDetailOpen] = useState(false);
+  const [selectedQForModal, setSelectedQForModal] = useState('1');
+
+  // Filtramos por fecha real del flujo de caja o por mes contable si no tiene fecha
+  const fixedPaymentsInMonth = allFixedPayments.filter(
+    (fp) => (fp.date && fp.date.startsWith(selectedYM)) || (!fp.date && fp.ym === selectedYM)
+  );
   const movesInMonth = allMoves.filter((m) => m.date && m.date.startsWith(selectedYM));
 
   const overview = calculateMonthOverview({
@@ -17,6 +25,8 @@ export function InicioTab({ period, data, onNavigateTab, onOpenSettings }) {
     fixedList,
     fixedPaymentsInMonth,
     movesInMonth,
+    credits,
+    allCreditPayments,
     settings,
     ym: selectedYM,
     currentYM: currentRealYM,
@@ -269,25 +279,56 @@ export function InicioTab({ period, data, onNavigateTab, onOpenSettings }) {
               {q1.extraIncomes > 0 && <span>• Extras: +{formatCOP(q1.extraIncomes)}</span>}
             </div>
           </div>
-          <div>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Gastado Q15</div>
+          <div
+            onClick={() => {
+              setSelectedQForModal('1');
+              setIsQDetailOpen(true);
+            }}
+            style={{
+              cursor: 'pointer',
+              padding: '2px 4px',
+              borderRadius: 8,
+              transition: 'background 0.2s',
+            }}
+            title="Toca para ver el detalle de los pagos de la Quincena del 15"
+          >
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span>Gastado Q15</span>
+              <span style={{ fontSize: '0.65rem', color: '#38bdf8' }}>Ver detalle ↗</span>
+            </div>
             <div className="money tabular-nums" style={{ fontSize: '1.05rem', fontWeight: 800, color: '#f8fafc', marginTop: 2 }}>
               {formatCOP(q1.spent)}
             </div>
             <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block', marginTop: 4 }}>
-              {q1.spent > 0 ? 'Pagos realizados' : 'Sin pagos aún'}
+              {q1.spent > 0 ? `${q1.paidItems?.length || 0} pago(s) realizado(s)` : 'Sin pagos aún'}
             </span>
           </div>
         </div>
 
         <button
           type="button"
-          onClick={() => onNavigateTab && onNavigateTab('fijos')}
+          onClick={() => {
+            setSelectedQForModal('1');
+            setIsQDetailOpen(true);
+          }}
           className="btn-secondary"
-          style={{ width: '100%', height: 44, fontSize: '0.84rem', justifyContent: 'space-between', padding: '0 16px', borderRadius: 12 }}
+          style={{
+            width: '100%',
+            height: 44,
+            fontSize: '0.84rem',
+            justifyContent: 'space-between',
+            padding: '0 16px',
+            borderRadius: 12,
+            backgroundColor: 'rgba(56, 189, 248, 0.08)',
+            border: '1px solid rgba(56, 189, 248, 0.25)',
+            color: '#38bdf8',
+          }}
         >
-          <span>Ver pagos de Quincena del 15 en Fijos</span>
-          <ChevronRight size={16} color="var(--text-muted)" />
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <CalendarCheck2 size={16} />
+            <span>Ver pagos de Quincena del 15 ({q1.paidItems?.length || 0})</span>
+          </span>
+          <ChevronRight size={16} color="#38bdf8" />
         </button>
       </div>
 
@@ -394,25 +435,56 @@ export function InicioTab({ period, data, onNavigateTab, onOpenSettings }) {
               {q2.extraIncomes > 0 && <span>• Extras: +{formatCOP(q2.extraIncomes)}</span>}
             </div>
           </div>
-          <div>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Gastado Q30</div>
+          <div
+            onClick={() => {
+              setSelectedQForModal('2');
+              setIsQDetailOpen(true);
+            }}
+            style={{
+              cursor: 'pointer',
+              padding: '2px 4px',
+              borderRadius: 8,
+              transition: 'background 0.2s',
+            }}
+            title="Toca para ver el detalle de los pagos de la Quincena del 30"
+          >
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span>Gastado Q30</span>
+              <span style={{ fontSize: '0.65rem', color: 'var(--accent-amber)' }}>Ver detalle ↗</span>
+            </div>
             <div className="money tabular-nums" style={{ fontSize: '1.05rem', fontWeight: 800, color: '#f8fafc', marginTop: 2 }}>
               {formatCOP(q2.spent)}
             </div>
             <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block', marginTop: 4 }}>
-              {q2.spent > 0 ? 'Arriendo y cuentas' : 'Sin pagos aún'}
+              {q2.spent > 0 ? `${q2.paidItems?.length || 0} pago(s) realizado(s)` : 'Sin pagos aún'}
             </span>
           </div>
         </div>
 
         <button
           type="button"
-          onClick={() => onNavigateTab && onNavigateTab('fijos')}
+          onClick={() => {
+            setSelectedQForModal('2');
+            setIsQDetailOpen(true);
+          }}
           className="btn-secondary"
-          style={{ width: '100%', height: 44, fontSize: '0.84rem', justifyContent: 'space-between', padding: '0 16px', borderRadius: 12 }}
+          style={{
+            width: '100%',
+            height: 44,
+            fontSize: '0.84rem',
+            justifyContent: 'space-between',
+            padding: '0 16px',
+            borderRadius: 12,
+            backgroundColor: 'rgba(245, 158, 11, 0.08)',
+            border: '1px solid rgba(245, 158, 11, 0.25)',
+            color: 'var(--accent-amber)',
+          }}
         >
-          <span>Ver pagos de Quincena del 30 en Fijos</span>
-          <ChevronRight size={16} color="var(--text-muted)" />
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <CalendarCheck2 size={16} />
+            <span>Ver pagos de Quincena del 30 ({q2.paidItems?.length || 0})</span>
+          </span>
+          <ChevronRight size={16} color="var(--accent-amber)" />
         </button>
       </div>
 
@@ -596,6 +668,16 @@ export function InicioTab({ period, data, onNavigateTab, onOpenSettings }) {
           <ChevronRight size={18} color="var(--text-muted)" />
         </div>
       </div>
+
+      {/* Modal detallado de movimientos de quincena */}
+      <QuincenaDetailModal
+        isOpen={isQDetailOpen}
+        onClose={() => setIsQDetailOpen(false)}
+        quincena={selectedQForModal}
+        selectedYM={selectedYM}
+        quincenaData={selectedQForModal === '1' ? q1 : q2}
+        onNavigateFijos={() => onNavigateTab && onNavigateTab('fijos')}
+      />
     </div>
   );
 }

@@ -85,7 +85,7 @@ export const backupRepository = {
     isSeeding = true;
 
     try {
-      await db.transaction('rw', [db.cards, db.fixed, db.settings, db.credits, db.creditPayments], async () => {
+      await db.transaction('rw', [db.cards, db.fixed, db.settings, db.credits, db.creditPayments, db.fixedPayments], async () => {
         // 1. Desduplicar tarjetas por nombre
         const allCards = await db.cards.toArray();
         const seenCards = new Set();
@@ -270,6 +270,48 @@ export const backupRepository = {
               createdAt: '2026-11-04T12:27:00Z',
             },
           ]);
+        }
+
+        // 5. Auto-calibración: si ya se registró el pago de la cuota 30 (ej. pago del 20 de noviembre)
+        // asegurar que nextDueDate avance a '02 de Enero de 2027' y que la cuota de Diciembre esté sincronizada en fixedPayments
+        const currentAv = await db.credits.get('av_villas_personal');
+        if (currentAv) {
+          const creditPayments = await db.creditPayments.where('creditId').equals('av_villas_personal').toArray();
+          const hasNov20OrDecPayment = creditPayments.some(
+            p => (p.date && p.date >= '2026-11-15' && p.type === 'cuota') || p.cuotasPagadas >= 30
+          );
+          if (hasNov20OrDecPayment || (currentAv.currentTermPaid || 0) >= 30) {
+            const updates = {};
+            if (currentAv.nextDueDate && currentAv.nextDueDate.includes('Diciembre')) {
+              updates.nextDueDate = '02 de Enero de 2027';
+            }
+            if ((currentAv.currentTermPaid || 0) < 30) {
+              updates.currentTermPaid = 30;
+              updates.currentTermRemaining = 42;
+            }
+            if (Object.keys(updates).length > 0) {
+              await db.credits.update('av_villas_personal', updates);
+            }
+
+            // Sincronizar en fixedPayments para Diciembre 2026 si aún no está
+            const fixedItems = await db.fixed.toArray();
+            const avFixed = fixedItems.find(f => f.name.toLowerCase().includes('av villas'));
+            if (avFixed) {
+              const fixedDec = await db.fixedPayments.get(`${avFixed.id}_2026-12`);
+              if (!fixedDec) {
+                await db.fixedPayments.put({
+                  id: `${avFixed.id}_2026-12`,
+                  fixedId: avFixed.id,
+                  ym: '2026-12',
+                  amount: currentAv.nextQuotaAmount || 334035,
+                  date: '2026-11-20',
+                  q: '2',
+                  notes: 'Cuota pagada por anticipado en Noviembre (Quincena 15)',
+                  createdAt: new Date().toISOString(),
+                });
+              }
+            }
+          }
         }
       });
     } finally {

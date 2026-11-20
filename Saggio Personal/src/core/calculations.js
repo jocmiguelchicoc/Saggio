@@ -221,8 +221,8 @@ export function getSalaryForMonth(settings, ym) {
     }
   }
 
-  // 2. Revisar configuración vigente (activa desde settings.since)
-  if (settings.since && ym >= settings.since) {
+  // 2. Revisar configuración vigente (activa desde settings.since o por defecto)
+  if (!settings.since || ym >= settings.since) {
     return {
       q1: Number(settings.q1) || 0,
       q2: Number(settings.q2) || 0,
@@ -244,6 +244,8 @@ export function calculateMonthOverview({
   fixedList = [],
   fixedPaymentsInMonth = [],
   movesInMonth = [],
+  credits = [],
+  allCreditPayments = [],
   settings = null,
   ym,
   currentYM,
@@ -255,12 +257,11 @@ export function calculateMonthOverview({
   // '1' (Quincena 15): Días 15 al 29
   // '2' (Quincena 30): Días 30 al fin de mes y días 1 al 14
   const extraIncomesList = movesInMonth.filter(m => m.kind === 'ingreso');
-  const extraIncomesQ1 = extraIncomesList
-    .filter(m => getQuincenaFromDate(m.date) === '1')
-    .reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
-  const extraIncomesQ2 = extraIncomesList
-    .filter(m => getQuincenaFromDate(m.date) === '2')
-    .reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
+  const extraIncomesQ1List = extraIncomesList.filter(m => getQuincenaFromDate(m.date) === '1');
+  const extraIncomesQ2List = extraIncomesList.filter(m => getQuincenaFromDate(m.date) === '2');
+
+  const extraIncomesQ1 = extraIncomesQ1List.reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
+  const extraIncomesQ2 = extraIncomesQ2List.reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
 
   const totalIncomeQ1 = baseSalaryQ1 + extraIncomesQ1;
   const totalIncomeQ2 = baseSalaryQ2 + contributionsQ2 + senaQ2 + extraIncomesQ2;
@@ -271,50 +272,67 @@ export function calculateMonthOverview({
     p => p.date && p.date.startsWith(ym) && (p.type === CARD_PAYMENT_TYPES.CUOTA || p.type === CARD_PAYMENT_TYPES.ABONO)
   );
 
-  const cardSpentQ1 = cardPaymentsInMonth
-    .filter(p => getQuincenaFromDate(p.date) === '1')
-    .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  const cardPaymentsQ1 = cardPaymentsInMonth.filter(p => getQuincenaFromDate(p.date) === '1');
+  const cardPaymentsQ2 = cardPaymentsInMonth.filter(p => getQuincenaFromDate(p.date) === '2');
 
-  const cardSpentQ2 = cardPaymentsInMonth
-    .filter(p => getQuincenaFromDate(p.date) === '2')
-    .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-
+  const cardSpentQ1 = cardPaymentsQ1.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  const cardSpentQ2 = cardPaymentsQ2.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
   const cardSpentThisMonth = cardSpentQ1 + cardSpentQ2;
 
-  // 3. Fijos pagados por quincena
-  const fixedSpentQ1 = fixedPaymentsInMonth
-    .filter(fp => fp.q === '1' || (!fp.q && getQuincenaFromDate(fp.date) === '1'))
-    .reduce((sum, fp) => sum + (Number(fp.amount) || 0), 0);
+  // 3. Fijos pagados por quincena según la fecha real de pago (cash flow)
+  // Si tiene fecha de pago (fp.date), la quincena se rige 100% por el día en que salió el dinero:
+  // Días 15 al 29 = Quincena del 15. Días 30 al 14 = Quincena del 30.
+  const getFixedQ = (fp) => {
+    if (fp.date) return getQuincenaFromDate(fp.date);
+    return fp.q || '1';
+  };
 
-  const fixedSpentQ2 = fixedPaymentsInMonth
-    .filter(fp => fp.q === '2' || (!fp.q && getQuincenaFromDate(fp.date) === '2'))
-    .reduce((sum, fp) => sum + (Number(fp.amount) || 0), 0);
+  const fixedPaymentsQ1 = fixedPaymentsInMonth.filter(fp => getFixedQ(fp) === '1');
+  const fixedPaymentsQ2 = fixedPaymentsInMonth.filter(fp => getFixedQ(fp) === '2');
 
+  const fixedSpentQ1 = fixedPaymentsQ1.reduce((sum, fp) => sum + (Number(fp.amount) || 0), 0);
+  const fixedSpentQ2 = fixedPaymentsQ2.reduce((sum, fp) => sum + (Number(fp.amount) || 0), 0);
   const fixedSpentThisMonth = fixedSpentQ1 + fixedSpentQ2;
 
-  // 4. Imprevistos por fecha
+  // 4. Créditos bancarios pagados en el mes (evitar duplicar si ya están incluidos en fixedPaymentsInMonth)
+  const creditPaymentsInMonth = allCreditPayments.filter(
+    cp => cp.date && cp.date.startsWith(ym) && (cp.type === 'cuota' || cp.type === 'abono')
+  );
+
+  const unlinkedCreditPayments = creditPaymentsInMonth.filter(cp => {
+    // Si ya existe un fixedPayment con fecha idéntica y monto aproximado, se toma desde fixedPayments
+    return !fixedPaymentsInMonth.some(
+      fp => fp.date === cp.date && Math.abs(Number(fp.amount) - Number(cp.amount)) < 100
+    );
+  });
+
+  const creditPaymentsQ1 = unlinkedCreditPayments.filter(cp => getQuincenaFromDate(cp.date) === '1');
+  const creditPaymentsQ2 = unlinkedCreditPayments.filter(cp => getQuincenaFromDate(cp.date) === '2');
+
+  const creditSpentQ1 = creditPaymentsQ1.reduce((sum, cp) => sum + (Number(cp.amount) || 0), 0);
+  const creditSpentQ2 = creditPaymentsQ2.reduce((sum, cp) => sum + (Number(cp.amount) || 0), 0);
+  const creditSpentThisMonth = creditSpentQ1 + creditSpentQ2;
+
+  // 5. Imprevistos por fecha
   const unexpectedList = movesInMonth.filter(m => m.kind === 'imprevisto');
-  const unexpectedQ1 = unexpectedList
-    .filter(m => getQuincenaFromDate(m.date) === '1')
-    .reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
+  const unexpectedQ1List = unexpectedList.filter(m => getQuincenaFromDate(m.date) === '1');
+  const unexpectedQ2List = unexpectedList.filter(m => getQuincenaFromDate(m.date) === '2');
 
-  const unexpectedQ2 = unexpectedList
-    .filter(m => getQuincenaFromDate(m.date) === '2')
-    .reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
-
+  const unexpectedQ1 = unexpectedQ1List.reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
+  const unexpectedQ2 = unexpectedQ2List.reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
   const unexpectedSpentThisMonth = unexpectedQ1 + unexpectedQ2;
 
   // Totales gastados por quincena
-  const spentQ1 = cardSpentQ1 + fixedSpentQ1 + unexpectedQ1;
-  const spentQ2 = cardSpentQ2 + fixedSpentQ2 + unexpectedQ2;
+  const spentQ1 = cardSpentQ1 + fixedSpentQ1 + creditSpentQ1 + unexpectedQ1;
+  const spentQ2 = cardSpentQ2 + fixedSpentQ2 + creditSpentQ2 + unexpectedQ2;
   const totalSpent = spentQ1 + spentQ2;
 
-  // 5. Te queda libre real
+  // 6. Te queda libre real
   const remainingQ1 = totalIncomeQ1 - spentQ1;
   const remainingQ2 = totalIncomeQ2 - spentQ2;
   const remainingThisMonth = totalIncome - totalSpent;
 
-  // 6. Pendientes por quincena (para consultas si se necesitan)
+  // 7. Pendientes por quincena (para consultas si se necesitan)
   const cardsSummary = calculateCardsSummary(cards, allCardPayments, ym);
   const fixedSummary = calculateFixedMonthStatus(fixedList, fixedPaymentsInMonth);
 
@@ -338,6 +356,70 @@ export function calculateMonthOverview({
   const pendingQ2 = cardPendingQ2 + fixedPendingQ2;
   const totalPending = pendingQ1 + pendingQ2;
 
+  // 8. Construcción de listas detalladas de pagos realizados en cada quincena
+  const cardsMap = Object.fromEntries(cards.map(c => [c.id, c]));
+  const fixedMap = Object.fromEntries(fixedList.map(f => [f.id, f]));
+  const creditsMap = Object.fromEntries(credits.map(cr => [cr.id, cr]));
+
+  const buildPaidItems = (cardPays, fixedPays, creditPays, unexpPays) => {
+    const list = [];
+
+    for (const p of cardPays) {
+      list.push({
+        id: `card-${p.id || Math.random()}`,
+        name: cardsMap[p.cardId]?.name || 'Tarjeta de Crédito',
+        type: 'tarjeta',
+        typeLabel: p.type === CARD_PAYMENT_TYPES.ABONO ? 'Abono Tarjeta' : 'Cuota Tarjeta',
+        amount: Number(p.amount) || 0,
+        date: p.date,
+        notes: p.notes,
+      });
+    }
+
+    for (const fp of fixedPays) {
+      const fixedInfo = fixedMap[fp.fixedId];
+      const isCreditLinked = fp.name?.toLowerCase().includes('av villas') || fixedInfo?.name?.toLowerCase().includes('av villas');
+      list.push({
+        id: `fixed-${fp.id || Math.random()}`,
+        name: fp.name || fixedInfo?.name || 'Obligación Fija',
+        type: isCreditLinked ? 'credito' : 'fijo',
+        typeLabel: isCreditLinked ? 'Crédito Bancario' : (fixedInfo?.cat || 'Gasto Fijo'),
+        amount: Number(fp.amount) || 0,
+        date: fp.date,
+        notes: fp.notes,
+      });
+    }
+
+    for (const cp of creditPays) {
+      list.push({
+        id: `credit-${cp.id || Math.random()}`,
+        name: creditsMap[cp.creditId]?.name || 'Crédito Banco AV Villas',
+        type: 'credito',
+        typeLabel: cp.type === 'abono' ? 'Abono a Capital' : 'Cuota Crédito',
+        amount: Number(cp.amount) || 0,
+        date: cp.date,
+        notes: cp.notes,
+      });
+    }
+
+    for (const m of unexpPays) {
+      list.push({
+        id: `move-${m.id || Math.random()}`,
+        name: m.description || m.category || 'Gasto Imprevisto',
+        type: 'imprevisto',
+        typeLabel: 'Imprevisto',
+        amount: Number(m.amount) || 0,
+        date: m.date,
+        notes: m.notes,
+      });
+    }
+
+    return list.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  };
+
+  const paidItemsQ1 = buildPaidItems(cardPaymentsQ1, fixedPaymentsQ1, creditPaymentsQ1, unexpectedQ1List);
+  const paidItemsQ2 = buildPaidItems(cardPaymentsQ2, fixedPaymentsQ2, creditPaymentsQ2, unexpectedQ2List);
+
   return {
     baseSalaryQ1,
     baseSalaryQ2,
@@ -360,9 +442,12 @@ export function calculateMonthOverview({
       spent: spentQ1,
       cardSpent: cardSpentQ1,
       fixedSpent: fixedSpentQ1,
+      creditSpent: creditSpentQ1,
       unexpectedSpent: unexpectedQ1,
       remaining: remainingQ1,
       pending: pendingQ1,
+      paidItems: paidItemsQ1,
+      extraIncomesList: extraIncomesQ1List,
     },
     q2: {
       salary: baseSalaryQ2,
@@ -373,9 +458,12 @@ export function calculateMonthOverview({
       spent: spentQ2,
       cardSpent: cardSpentQ2,
       fixedSpent: fixedSpentQ2,
+      creditSpent: creditSpentQ2,
       unexpectedSpent: unexpectedQ2,
       remaining: remainingQ2,
       pending: pendingQ2,
+      paidItems: paidItemsQ2,
+      extraIncomesList: extraIncomesQ2List,
     },
   };
 }

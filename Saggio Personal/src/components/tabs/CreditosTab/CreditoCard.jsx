@@ -16,6 +16,15 @@ export function CreditoCard({
 
   if (!metrics) return null;
 
+  const isAdvanceCovered =
+    termPaid >= 30 ||
+    payments.some(p => (p.date && p.date >= '2026-11-15' && p.type === 'cuota') || (p.cuotasPagadas && p.cuotasPagadas >= 30)) ||
+    (credit.nextDueDate && credit.nextDueDate.includes('Enero'));
+
+  const displayDueDate = isAdvanceCovered
+    ? (credit.nextDueDate && !credit.nextDueDate.includes('Diciembre') ? credit.nextDueDate : '02 de Enero de 2027')
+    : (credit.nextDueDate || '02 de Diciembre de 2026');
+
   const {
     originalAmount,
     currentBalance,
@@ -81,8 +90,8 @@ export function CreditoCard({
             gap: 5,
             padding: '4px 10px',
             borderRadius: 999,
-            backgroundColor: 'rgba(16, 185, 129, 0.15)',
-            border: '1px solid rgba(16, 185, 129, 0.35)',
+            backgroundColor: isAdvanceCovered ? 'rgba(16, 185, 129, 0.2)' : 'rgba(16, 185, 129, 0.15)',
+            border: isAdvanceCovered ? '1px solid rgba(16, 185, 129, 0.5)' : '1px solid rgba(16, 185, 129, 0.35)',
             color: '#34d399',
             fontSize: '0.75rem',
             fontWeight: 700,
@@ -91,7 +100,7 @@ export function CreditoCard({
           }}
         >
           <ShieldCheck size={14} />
-          <span>Al día</span>
+          <span>{isAdvanceCovered ? 'Al día · Dic 2 cubierto' : 'Al día'}</span>
         </div>
       </div>
 
@@ -192,9 +201,15 @@ export function CreditoCard({
           <div className="money tabular-nums" style={{ fontSize: '1.15rem', fontWeight: 800, color: '#38bdf8', marginTop: 2 }}>
             {formatCOP(estimatedQuota)}
           </div>
-          <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: 2 }}>
-            Vence: {credit.nextDueDate || '02 de Diciembre de 2026'}
+          <div style={{ fontSize: '0.7rem', color: isAdvanceCovered ? '#34d399' : '#64748b', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+            {isAdvanceCovered && <CheckCircle2 size={12} color="#34d399" />}
+            <span>Vence: {displayDueDate}</span>
           </div>
+          {isAdvanceCovered && (
+            <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginTop: 2 }}>
+              Cuota de Dic 2 pagada por anticipado
+            </div>
+          )}
         </div>
 
         <div

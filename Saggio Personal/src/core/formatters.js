@@ -102,6 +102,34 @@ export function shiftYear(year, delta) {
 }
 
 /**
+ * Avanza una fecha legible de vencimiento (ej. '02 de Diciembre de 2026') en +1 mes ('02 de Enero de 2027')
+ */
+export function advanceDueDate(dateStr) {
+  if (!dateStr) return '02 de Enero de 2027';
+
+  const match = dateStr.match(/(\d{1,2})\s*(?:de\s*)?([A-Za-z]+)(?:\s*de\s*)?(\d{4})/);
+  if (!match) return dateStr;
+
+  const day = match[1].padStart(2, '0');
+  const monthNameRaw = match[2].toLowerCase();
+  let year = parseInt(match[3], 10);
+
+  const monthIdx = MONTH_NAMES.findIndex(
+    m => m.toLowerCase().startsWith(monthNameRaw.slice(0, 3))
+  );
+
+  if (monthIdx === -1) return dateStr;
+
+  let nextMonthIdx = monthIdx + 1;
+  if (nextMonthIdx >= 12) {
+    nextMonthIdx = 0;
+    year += 1;
+  }
+
+  return `${day} de ${MONTH_NAMES[nextMonthIdx]} de ${year}`;
+}
+
+/**
  * Formatea una fecha YYYY-MM-DD para visualización amigable colombiana: "15 nov 2026"
  */
 export function formatDateFriendly(dateStr) {
@@ -110,4 +138,7 @@ export function formatDateFriendly(dateStr) {
   const monthShort = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'][parseInt(m, 10) - 1];
   return `${parseInt(d, 10)} ${monthShort} ${y}`;
 }
+
+export const formatDateColombian = formatDateFriendly;
+
 

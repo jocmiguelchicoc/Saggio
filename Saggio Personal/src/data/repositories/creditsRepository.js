@@ -1,4 +1,5 @@
 import { db } from '../db.js';
+import { advanceDueDate } from '../../core/formatters.js';
 
 export const creditsRepository = {
   /**
@@ -48,6 +49,9 @@ export const creditsRepository = {
         updates.currentTermRemaining = Math.max(0, credit.termTotal - updates.currentTermPaid);
         if (paymentData.capitalAmortizado) {
           updates.currentBalance = Math.max(0, (credit.currentBalance || 0) - paymentData.capitalAmortizado);
+        }
+        if (credit.nextDueDate) {
+          updates.nextDueDate = advanceDueDate(credit.nextDueDate);
         }
       } else if (paymentData.type === 'abono') {
         const abonoAmount = Number(paymentData.amount) || 0;

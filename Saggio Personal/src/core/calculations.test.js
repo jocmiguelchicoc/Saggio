@@ -8,7 +8,7 @@ import {
   calculateCreditMetrics,
 } from './calculations.js';
 import { parseAvVillasTokens } from './avVillasParser.js';
-import { getQuincenaFromDate } from './formatters.js';
+import { getQuincenaFromDate, advanceDueDate } from './formatters.js';
 import { CARD_PAYMENT_TYPES } from './constants.js';
 
 describe('Cálculos financieros - Reglas de Negocio', () => {
@@ -393,5 +393,59 @@ describe('Cálculos financieros - Reglas de Negocio', () => {
     expect(parsed.capitalTotal).toBe(8778149);
     expect(parsed.proximaCuota).toBe(339498);
     expect(parsed.fechaLimitePago).toBe('02 de Noviembre de 2026');
+  });
+
+  it('Adelanto de fecha de vencimiento: 02 de Diciembre de 2026 avanza a 02 de Enero de 2027', () => {
+    expect(advanceDueDate('02 de Diciembre de 2026')).toBe('02 de Enero de 2027');
+    expect(advanceDueDate('15 de Enero de 2027')).toBe('15 de Febrero de 2027');
+  });
+
+  it('Pago de cuota y plata extra el 20 de noviembre se descuenta y suma en la Quincena del 15', () => {
+    const credits = [
+      { id: 'av_villas_personal', name: 'Crédito Banco AV Villas', currentBalance: 8641103, termTotal: 72, currentTermPaid: 29 }
+    ];
+    const allCreditPayments = [
+      {
+        creditId: 'av_villas_personal',
+        type: 'cuota',
+        ym: '2026-11',
+        date: '2026-11-20',
+        amount: 334035,
+        cuotasPagadas: 30,
+        notes: 'Pago cuota adelantada diciembre'
+      }
+    ];
+    const movesInMonth = [
+      { id: 1, name: 'Plata extra', kind: 'ingreso', amount: 500000, date: '2026-11-20', notes: 'Ingreso freelance' }
+    ];
+    const settings = { q1: 929000, q2: 929000 };
+
+    const overview = calculateMonthOverview({
+      cards: [],
+      allCardPayments: [],
+      fixedList: [],
+      fixedPaymentsInMonth: [],
+      movesInMonth,
+      credits,
+      allCreditPayments,
+      settings,
+      ym: '2026-11',
+      currentYM: '2026-11',
+    });
+
+    // Quincena 15: Sueldo 929.000 + Extra 500.000 = 1.429.000
+    expect(overview.q1.totalIncome).toBe(1429000);
+    // Gastado Q15 incluye el pago del 20 de noviembre: 334.035
+    expect(overview.q1.spent).toBe(334035);
+    // Te queda libre: 1.429.000 - 334.035 = 1.094.965
+    expect(overview.q1.remaining).toBe(1094965);
+    // Lista de pagos realizados en Q15 contiene el crédito
+    expect(overview.q1.paidItems.length).toBe(1);
+    expect(overview.q1.paidItems[0].name).toBe('Crédito Banco AV Villas');
+    expect(overview.q1.paidItems[0].amount).toBe(334035);
+    expect(overview.q1.paidItems[0].type).toBe('credito');
+    // Lista de ingresos extras en Q15
+    expect(overview.q1.extraIncomesList.length).toBe(1);
+    expect(overview.q1.extraIncomesList[0].amount).toBe(500000);
   });
 });
