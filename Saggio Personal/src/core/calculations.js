@@ -279,39 +279,54 @@ export function calculateMonthOverview({
   const cardSpentQ2 = cardPaymentsQ2.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
   const cardSpentThisMonth = cardSpentQ1 + cardSpentQ2;
 
-  // 3. Fijos pagados por quincena según la fecha real de pago (cash flow)
-  // Si tiene fecha de pago (fp.date), la quincena se rige 100% por el día en que salió el dinero:
-  // Días 15 al 29 = Quincena del 15. Días 30 al 14 = Quincena del 30.
+  // 3. Mapas de referencia
+  const cardsMap = Object.fromEntries(cards.map(c => [c.id, c]));
+  const fixedMap = Object.fromEntries(fixedList.map(f => [f.id, f]));
+  const creditsMap = Object.fromEntries(credits.map(cr => [cr.id, cr]));
+
+  // 4. Créditos bancarios pagados en el mes (origen principal y real de cuotas bancarias)
+  const creditPaymentsInMonth = allCreditPayments.filter(
+    cp => cp.date && cp.date.startsWith(ym) && (cp.type === 'cuota' || cp.type === 'abono')
+  );
+
+  const creditPaymentsQ1 = creditPaymentsInMonth.filter(cp => getQuincenaFromDate(cp.date) === '1');
+  const creditPaymentsQ2 = creditPaymentsInMonth.filter(cp => getQuincenaFromDate(cp.date) === '2');
+
+  const creditSpentQ1 = creditPaymentsQ1.reduce((sum, cp) => sum + (Number(cp.amount) || 0), 0);
+  const creditSpentQ2 = creditPaymentsQ2.reduce((sum, cp) => sum + (Number(cp.amount) || 0), 0);
+  const creditSpentThisMonth = creditSpentQ1 + creditSpentQ2;
+
+  // Helper para identificar si un fixedPayment corresponde a un crédito bancario (ej. "Cuota Banco AV Villas")
+  const isCreditLinkedFixed = (fp) => {
+    const fixedInfo = fixedMap[fp.fixedId];
+    const name = (fp.name || fixedInfo?.name || '').toLowerCase();
+    return name.includes('av villas') || credits.some(c => c.fixedLinkedName && name.includes(c.fixedLinkedName.toLowerCase()));
+  };
+
+  // 5. Fijos pagados por quincena según la fecha real de pago (cash flow).
+  // Si una obligación fija es de un crédito bancario y YA existe un registro en creditPayments para esa quincena,
+  // se descarta la obligación fija para NO duplicar el pago (el creditPayment contiene el monto real pagado por el usuario, ej: $335.000).
   const getFixedQ = (fp) => {
     if (fp.date) return getQuincenaFromDate(fp.date);
     return fp.q || '1';
   };
 
-  const fixedPaymentsQ1 = fixedPaymentsInMonth.filter(fp => getFixedQ(fp) === '1');
-  const fixedPaymentsQ2 = fixedPaymentsInMonth.filter(fp => getFixedQ(fp) === '2');
+  const fixedPaymentsQ1 = fixedPaymentsInMonth.filter(fp => {
+    if (getFixedQ(fp) !== '1') return false;
+    if (isCreditLinkedFixed(fp) && creditPaymentsQ1.length > 0) return false;
+    return true;
+  });
+
+  const fixedPaymentsQ2 = fixedPaymentsInMonth.filter(fp => {
+    if (getFixedQ(fp) !== '2') return false;
+    // Si la cuota ya fue pagada en esta quincena o por anticipado en la Quincena 15, no duplicarla en Q30
+    if (isCreditLinkedFixed(fp) && (creditPaymentsQ2.length > 0 || creditPaymentsQ1.length > 0)) return false;
+    return true;
+  });
 
   const fixedSpentQ1 = fixedPaymentsQ1.reduce((sum, fp) => sum + (Number(fp.amount) || 0), 0);
   const fixedSpentQ2 = fixedPaymentsQ2.reduce((sum, fp) => sum + (Number(fp.amount) || 0), 0);
   const fixedSpentThisMonth = fixedSpentQ1 + fixedSpentQ2;
-
-  // 4. Créditos bancarios pagados en el mes (evitar duplicar si ya están incluidos en fixedPaymentsInMonth)
-  const creditPaymentsInMonth = allCreditPayments.filter(
-    cp => cp.date && cp.date.startsWith(ym) && (cp.type === 'cuota' || cp.type === 'abono')
-  );
-
-  const unlinkedCreditPayments = creditPaymentsInMonth.filter(cp => {
-    // Si ya existe un fixedPayment con fecha idéntica y monto aproximado, se toma desde fixedPayments
-    return !fixedPaymentsInMonth.some(
-      fp => fp.date === cp.date && Math.abs(Number(fp.amount) - Number(cp.amount)) < 100
-    );
-  });
-
-  const creditPaymentsQ1 = unlinkedCreditPayments.filter(cp => getQuincenaFromDate(cp.date) === '1');
-  const creditPaymentsQ2 = unlinkedCreditPayments.filter(cp => getQuincenaFromDate(cp.date) === '2');
-
-  const creditSpentQ1 = creditPaymentsQ1.reduce((sum, cp) => sum + (Number(cp.amount) || 0), 0);
-  const creditSpentQ2 = creditPaymentsQ2.reduce((sum, cp) => sum + (Number(cp.amount) || 0), 0);
-  const creditSpentThisMonth = creditSpentQ1 + creditSpentQ2;
 
   // 5. Imprevistos por fecha
   const unexpectedList = movesInMonth.filter(m => m.kind === 'imprevisto');
@@ -357,10 +372,6 @@ export function calculateMonthOverview({
   const totalPending = pendingQ1 + pendingQ2;
 
   // 8. Construcción de listas detalladas de pagos realizados en cada quincena
-  const cardsMap = Object.fromEntries(cards.map(c => [c.id, c]));
-  const fixedMap = Object.fromEntries(fixedList.map(f => [f.id, f]));
-  const creditsMap = Object.fromEntries(credits.map(cr => [cr.id, cr]));
-
   const buildPaidItems = (cardPays, fixedPays, creditPays, unexpPays) => {
     const list = [];
 

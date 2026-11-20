@@ -444,8 +444,61 @@ describe('Cálculos financieros - Reglas de Negocio', () => {
     expect(overview.q1.paidItems[0].name).toBe('Crédito Banco AV Villas');
     expect(overview.q1.paidItems[0].amount).toBe(334035);
     expect(overview.q1.paidItems[0].type).toBe('credito');
+    // Quincena 30 NO debe tener este pago
+    expect(overview.q2.paidItems.length).toBe(0);
     // Lista de ingresos extras en Q15
     expect(overview.q1.extraIncomesList.length).toBe(1);
     expect(overview.q1.extraIncomesList[0].amount).toBe(500000);
+  });
+
+  it('No duplica cuota AV Villas de $335.000 con la obligación fija ni la muestra en Quincena 30', () => {
+    const credits = [
+      { id: 'av_villas_personal', name: 'Crédito Banco AV Villas', currentBalance: 8641103, termTotal: 72, currentTermPaid: 29, fixedLinkedName: 'Cuota Banco AV Villas' }
+    ];
+    const fixedList = [
+      { id: 11, name: 'Cuota Banco AV Villas', amount: 340000, q: '2', cat: 'Otros' },
+      { id: 12, name: 'Arriendo', amount: 1200000, q: '2', cat: 'Vivienda' }
+    ];
+    // Supongamos que en fixedPayments había un registro sincronizado con monto estimado $334.035
+    const fixedPaymentsInMonth = [
+      { id: '11_2026-12', fixedId: 11, name: 'Cuota Banco AV Villas', amount: 334035, date: '2026-11-20', q: '1' },
+      { id: '11_2026-11', fixedId: 11, name: 'Cuota Banco AV Villas', amount: 340000, q: '2' },
+    ];
+    // Y el usuario registró su pago real de $335.000 el 20 de noviembre
+    const allCreditPayments = [
+      {
+        creditId: 'av_villas_personal',
+        type: 'cuota',
+        ym: '2026-11',
+        date: '2026-11-20',
+        amount: 335000,
+        cuotasPagadas: 30,
+        notes: 'Pago cuota mensual de $335.000'
+      }
+    ];
+    const settings = { q1: 929000, q2: 929000 };
+
+    const overview = calculateMonthOverview({
+      cards: [],
+      allCardPayments: [],
+      fixedList,
+      fixedPaymentsInMonth,
+      movesInMonth: [],
+      credits,
+      allCreditPayments,
+      settings,
+      ym: '2026-11',
+      currentYM: '2026-11',
+    });
+
+    // En Quincena 15 sólo debe haber UN pago de AV Villas por $335.000
+    expect(overview.q1.paidItems.length).toBe(1);
+    expect(overview.q1.paidItems[0].name).toBe('Crédito Banco AV Villas');
+    expect(overview.q1.paidItems[0].amount).toBe(335000);
+    expect(overview.q1.spent).toBe(335000);
+
+    // En Quincena 30 NO debe aparecer AV Villas
+    const q2AvItems = overview.q2.paidItems.filter(item => item.name.toLowerCase().includes('av villas'));
+    expect(q2AvItems.length).toBe(0);
   });
 });

@@ -272,17 +272,37 @@ export const backupRepository = {
           ]);
         }
 
-        // 5. Auto-calibración: si ya se registró el pago de la cuota 30 (ej. pago del 20 de noviembre)
-        // asegurar que nextDueDate avance a '02 de Enero de 2027' y que la cuota de Diciembre esté sincronizada en fixedPayments
+        // 5. Auto-calibración: asegurar que sólo exista el pago real de Noviembre ($335.000 en Quincena 15)
+        // y que Quincena 30 no tenga pagos duplicados ni cuotas ficticias
         const currentAv = await db.credits.get('av_villas_personal');
         if (currentAv) {
           const creditPayments = await db.creditPayments.where('creditId').equals('av_villas_personal').toArray();
-          const hasNov20OrDecPayment = creditPayments.some(
-            p => (p.date && p.date >= '2026-11-15' && p.type === 'cuota') || p.cuotasPagadas >= 30
+
+          // 5.1 Eliminar pagos fantasma o antiguos de Noviembre previos al día 15 (ej. el inicial de 2026-11-04 que caía en Q30)
+          for (const p of creditPayments) {
+            if (p.type === 'cuota' && p.ym === '2026-11' && p.date && p.date < '2026-11-15') {
+              await db.creditPayments.delete(p.id);
+            }
+          }
+
+          const nov20Payments = creditPayments.filter(
+            p => (p.date && p.date >= '2026-11-15' && p.type === 'cuota') || (p.cuotasPagadas && p.cuotasPagadas >= 30)
           );
+
+          // 5.2 Si hay duplicados accidentales (uno con 334.035 y otro con 335.000), conservar el pago real de 335.000
+          if (nov20Payments.length > 1) {
+            const realPayment = nov20Payments.find(p => Number(p.amount) === 335000) || nov20Payments[nov20Payments.length - 1];
+            for (const p of nov20Payments) {
+              if (p.id !== realPayment.id) {
+                await db.creditPayments.delete(p.id);
+              }
+            }
+          }
+
+          const hasNov20OrDecPayment = nov20Payments.length > 0;
           if (hasNov20OrDecPayment || (currentAv.currentTermPaid || 0) >= 30) {
             const updates = {};
-            if (currentAv.nextDueDate && currentAv.nextDueDate.includes('Diciembre')) {
+            if (!currentAv.nextDueDate || currentAv.nextDueDate.includes('Diciembre')) {
               updates.nextDueDate = '02 de Enero de 2027';
             }
             if ((currentAv.currentTermPaid || 0) < 30) {
@@ -293,23 +313,27 @@ export const backupRepository = {
               await db.credits.update('av_villas_personal', updates);
             }
 
-            // Sincronizar en fixedPayments para Diciembre 2026 si aún no está
+            // 5.3 Sincronizar en fixedPayments: Quitar fixedPayment de 2026-11 para que NO aparezca en Quincena 30
             const fixedItems = await db.fixed.toArray();
             const avFixed = fixedItems.find(f => f.name.toLowerCase().includes('av villas'));
             if (avFixed) {
-              const fixedDec = await db.fixedPayments.get(`${avFixed.id}_2026-12`);
-              if (!fixedDec) {
-                await db.fixedPayments.put({
-                  id: `${avFixed.id}_2026-12`,
-                  fixedId: avFixed.id,
-                  ym: '2026-12',
-                  amount: currentAv.nextQuotaAmount || 334035,
-                  date: '2026-11-20',
-                  q: '2',
-                  notes: 'Cuota pagada por anticipado en Noviembre (Quincena 15)',
-                  createdAt: new Date().toISOString(),
-                });
-              }
+              // Eliminar cualquier fixedPayment de AV Villas asignado a Q30 de Noviembre
+              await db.fixedPayments.delete(`${avFixed.id}_2026-11`);
+
+              // Asegurar que el único fixedPayment registrado de AV Villas sea el de Diciembre cubierto por anticipado en Q15 con $335.000
+              const userPayment = nov20Payments.find(p => Number(p.amount) === 335000) || nov20Payments[0];
+              const realAmount = userPayment ? Number(userPayment.amount) : 335000;
+              const realDate = userPayment?.date || '2026-11-20';
+              await db.fixedPayments.put({
+                id: `${avFixed.id}_2026-12`,
+                fixedId: avFixed.id,
+                ym: '2026-12',
+                amount: realAmount,
+                date: realDate,
+                q: '1', // Pertenece a Quincena del 15
+                notes: 'Cuota pagada por anticipado en Noviembre (Quincena 15)',
+                createdAt: new Date().toISOString(),
+              });
             }
           }
         }
