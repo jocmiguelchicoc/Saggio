@@ -267,22 +267,31 @@ export function calculateMonthOverview({
   const totalIncomeQ2 = baseSalaryQ2 + contributionsQ2 + senaQ2 + extraIncomesQ2;
   const totalIncome = totalIncomeQ1 + totalIncomeQ2;
 
-  // 2. Gastado en tarjetas por fecha
-  const cardPaymentsInMonth = allCardPayments.filter(
-    p => p.date && p.date.startsWith(ym) && (p.type === CARD_PAYMENT_TYPES.CUOTA || p.type === CARD_PAYMENT_TYPES.ABONO)
-  );
-
-  const cardPaymentsQ1 = cardPaymentsInMonth.filter(p => getQuincenaFromDate(p.date) === '1');
-  const cardPaymentsQ2 = cardPaymentsInMonth.filter(p => getQuincenaFromDate(p.date) === '2');
-
-  const cardSpentQ1 = cardPaymentsQ1.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-  const cardSpentQ2 = cardPaymentsQ2.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-  const cardSpentThisMonth = cardSpentQ1 + cardSpentQ2;
-
   // 3. Mapas de referencia
   const cardsMap = Object.fromEntries(cards.map(c => [c.id, c]));
   const fixedMap = Object.fromEntries(fixedList.map(f => [f.id, f]));
   const creditsMap = Object.fromEntries(credits.map(cr => [cr.id, cr]));
+
+  // 2. Gastado en tarjetas por fecha y quincena presupuestal
+  const cardPaymentsInMonth = allCardPayments.filter(
+    p => p.date && p.date.startsWith(ym) && (p.type === CARD_PAYMENT_TYPES.CUOTA || p.type === CARD_PAYMENT_TYPES.ABONO)
+  );
+
+  const getCardQ = (p) => {
+    const card = cardsMap[p.cardId];
+    // Si la tarjeta está configurada para Quincena 15, pertenece a Q1
+    if (card?.q === '1') return '1';
+    // Si tiene fecha de pago, se asigna por la fecha real del flujo de caja (días 15 al 29 = Q1)
+    if (p.date) return getQuincenaFromDate(p.date);
+    return card?.q || '2';
+  };
+
+  const cardPaymentsQ1 = cardPaymentsInMonth.filter(p => getCardQ(p) === '1');
+  const cardPaymentsQ2 = cardPaymentsInMonth.filter(p => getCardQ(p) === '2');
+
+  const cardSpentQ1 = cardPaymentsQ1.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  const cardSpentQ2 = cardPaymentsQ2.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  const cardSpentThisMonth = cardSpentQ1 + cardSpentQ2;
 
   // 4. Créditos bancarios pagados en el mes (origen principal y real de cuotas bancarias)
   const creditPaymentsInMonth = allCreditPayments.filter(
@@ -303,12 +312,27 @@ export function calculateMonthOverview({
     return name.includes('av villas') || credits.some(c => c.fixedLinkedName && name.includes(c.fixedLinkedName.toLowerCase()));
   };
 
-  // 5. Fijos pagados por quincena según la fecha real de pago (cash flow).
-  // Si una obligación fija es de un crédito bancario y YA existe un registro en creditPayments para esa quincena,
-  // se descarta la obligación fija para NO duplicar el pago (el creditPayment contiene el monto real pagado por el usuario, ej: $335.000).
+  // 5. Asignación estricta de quincenas para obligaciones fijas:
+  // - Toda obligación fija configurada originalmente en la Quincena del 15 (Luz, Gas, Comida, etc.)
+  //   pertenece SIEMPRE a la Quincena del 15 (sin importar si la factura se pagó el 14 o el 15).
+  // - Las obligaciones fijas de la Quincena 30 pertenecen a la 30, EXCEPTO si se adelantaron y pagaron
+  //   en la Quincena del 15 (ej. Cuota Banco AV Villas pagada el 20 de noviembre).
   const getFixedQ = (fp) => {
-    if (fp.date) return getQuincenaFromDate(fp.date);
-    return fp.q || '1';
+    const fixedInfo = fixedMap[fp.fixedId];
+    const originalQ = String(fp.q || fixedInfo?.q || '1');
+
+    // Si la obligación original es de la Quincena 15, SIEMPRE pertenece a la Quincena 15
+    if (originalQ === '1') {
+      return '1';
+    }
+
+    // Si era originalmente de la Quincena 30:
+    // Si se pagó por anticipado en la Quincena 15 (días 15 al 29), se traslada a la Quincena del 15
+    if (fp.date && getQuincenaFromDate(fp.date) === '1') {
+      return '1';
+    }
+
+    return '2';
   };
 
   const fixedPaymentsQ1 = fixedPaymentsInMonth.filter(fp => {

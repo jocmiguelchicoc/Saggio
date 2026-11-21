@@ -501,4 +501,40 @@ describe('Cálculos financieros - Reglas de Negocio', () => {
     const q2AvItems = overview.q2.paidItems.filter(item => item.name.toLowerCase().includes('av villas'));
     expect(q2AvItems.length).toBe(0);
   });
+
+  it('Obligaciones de Q15 (Luz y Gas) pagadas el 14 de noviembre pertenecen a la Quincena del 15 y NO a la Quincena del 30', () => {
+    const fixedList = [
+      { id: 1, name: 'Luz', amount: 50000, q: '1', cat: 'Servicios' },
+      { id: 2, name: 'Gas', amount: 21000, q: '1', cat: 'Servicios' },
+      { id: 3, name: 'Arriendo', amount: 1200000, q: '2', cat: 'Vivienda' },
+    ];
+    const fixedPaymentsInMonth = [
+      { id: '1_2026-11', fixedId: 1, name: 'Luz', amount: 50000, date: '2026-11-14', q: '1' },
+      { id: '2_2026-11', fixedId: 2, name: 'Gas', amount: 21000, date: '2026-11-14', q: '1' },
+    ];
+    const settings = { q1: 929000, q2: 929000 };
+
+    const overview = calculateMonthOverview({
+      cards: [],
+      allCardPayments: [],
+      fixedList,
+      fixedPaymentsInMonth,
+      movesInMonth: [],
+      credits: [],
+      allCreditPayments: [],
+      settings,
+      ym: '2026-11',
+      currentYM: '2026-11',
+    });
+
+    // En Quincena 15 deben estar Luz ($50.000) y Gas ($21.000) = $71.000
+    expect(overview.q1.spent).toBe(71000);
+    expect(overview.q1.paidItems.length).toBe(2);
+    expect(overview.q1.paidItems.map(i => i.name)).toContain('Luz');
+    expect(overview.q1.paidItems.map(i => i.name)).toContain('Gas');
+
+    // En Quincena 30 debe estar LIMPIO (0 pagos realizados)
+    expect(overview.q2.spent).toBe(0);
+    expect(overview.q2.paidItems.length).toBe(0);
+  });
 });
