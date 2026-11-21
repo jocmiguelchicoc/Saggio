@@ -85,7 +85,7 @@ export const backupRepository = {
     isSeeding = true;
 
     try {
-      await db.transaction('rw', [db.cards, db.fixed, db.settings, db.credits, db.creditPayments, db.fixedPayments], async () => {
+      await db.transaction('rw', [db.cards, db.cardPayments, db.fixed, db.fixedPayments, db.moves, db.settings, db.credits, db.creditPayments], async () => {
         // 1. Desduplicar tarjetas por nombre
         const allCards = await db.cards.toArray();
         const seenCards = new Set();
@@ -335,6 +335,27 @@ export const backupRepository = {
                 createdAt: new Date().toISOString(),
               });
             }
+          }
+        }
+
+        // 6. Trasladar pagos registrados con fecha 14 de noviembre al 15 de noviembre (Quincena 15)
+        // El usuario canceló sus servicios (Luz, Gas, etc.) con el dinero de la Quincena del 15
+        const fixedPays = await db.fixedPayments.toArray();
+        for (const fp of fixedPays) {
+          if (fp.date === '2026-11-14') {
+            await db.fixedPayments.update(fp.id, { date: '2026-11-15', q: '1' });
+          }
+        }
+        const cardPays = await db.cardPayments.toArray();
+        for (const cp of cardPays) {
+          if (cp.date === '2026-11-14') {
+            await db.cardPayments.update(cp.id, { date: '2026-11-15' });
+          }
+        }
+        const userMoves = await db.moves.toArray();
+        for (const m of userMoves) {
+          if (m.date === '2026-11-14') {
+            await db.moves.update(m.id, { date: '2026-11-15' });
           }
         }
       });
