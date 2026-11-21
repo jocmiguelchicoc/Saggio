@@ -307,28 +307,12 @@ export function InicioTab({ period, data, onNavigateTab, onOpenSettings }) {
 
         <button
           type="button"
-          onClick={() => {
-            setSelectedQForModal('1');
-            setIsQDetailOpen(true);
-          }}
+          onClick={() => onNavigateTab && onNavigateTab('fijos')}
           className="btn-secondary"
-          style={{
-            width: '100%',
-            height: 44,
-            fontSize: '0.84rem',
-            justifyContent: 'space-between',
-            padding: '0 16px',
-            borderRadius: 12,
-            backgroundColor: 'rgba(56, 189, 248, 0.08)',
-            border: '1px solid rgba(56, 189, 248, 0.25)',
-            color: '#38bdf8',
-          }}
+          style={{ width: '100%', height: 44, fontSize: '0.84rem', justifyContent: 'space-between', padding: '0 16px', borderRadius: 12 }}
         >
-          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <CalendarCheck2 size={16} />
-            <span>Ver pagos de Quincena del 15 ({q1.paidItems?.length || 0})</span>
-          </span>
-          <ChevronRight size={16} color="#38bdf8" />
+          <span>Ver pagos de Quincena del 15 en Fijos</span>
+          <ChevronRight size={16} color="var(--text-muted)" />
         </button>
       </div>
 
@@ -463,28 +447,12 @@ export function InicioTab({ period, data, onNavigateTab, onOpenSettings }) {
 
         <button
           type="button"
-          onClick={() => {
-            setSelectedQForModal('2');
-            setIsQDetailOpen(true);
-          }}
+          onClick={() => onNavigateTab && onNavigateTab('fijos')}
           className="btn-secondary"
-          style={{
-            width: '100%',
-            height: 44,
-            fontSize: '0.84rem',
-            justifyContent: 'space-between',
-            padding: '0 16px',
-            borderRadius: 12,
-            backgroundColor: 'rgba(245, 158, 11, 0.08)',
-            border: '1px solid rgba(245, 158, 11, 0.25)',
-            color: 'var(--accent-amber)',
-          }}
+          style={{ width: '100%', height: 44, fontSize: '0.84rem', justifyContent: 'space-between', padding: '0 16px', borderRadius: 12 }}
         >
-          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <CalendarCheck2 size={16} />
-            <span>Ver pagos de Quincena del 30 ({q2.paidItems?.length || 0})</span>
-          </span>
-          <ChevronRight size={16} color="var(--accent-amber)" />
+          <span>Ver pagos de Quincena del 30 en Fijos</span>
+          <ChevronRight size={16} color="var(--text-muted)" />
         </button>
       </div>
 
