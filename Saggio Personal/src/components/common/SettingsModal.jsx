@@ -185,9 +185,34 @@ export function SettingsModal({
         </div>
 
         {/* Botón Guardar */}
-        <div style={{ marginTop: 10 }}>
+        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
           <button type="submit" className="btn-primary" style={{ width: '100%', height: 50 }}>
             Guardar Configuración
+          </button>
+
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={async () => {
+              try {
+                if ('serviceWorker' in navigator) {
+                  const regs = await navigator.serviceWorker.getRegistrations();
+                  for (const reg of regs) {
+                    await reg.update();
+                  }
+                }
+                if ('caches' in window) {
+                  const keys = await caches.keys();
+                  await Promise.all(keys.map((k) => caches.delete(k)));
+                }
+              } catch (e) {
+                console.warn(e);
+              }
+              window.location.reload();
+            }}
+            style={{ width: '100%', height: 44, fontSize: '0.84rem', justifyContent: 'center' }}
+          >
+            🔄 Buscar actualización de la App (Tus datos se conservan)
           </button>
         </div>
       </form>

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'saggio-cache-v14';
+const CACHE_NAME = 'saggio-cache-v15';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -30,19 +30,42 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
-    })
+    }).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
   // Solo interceptar peticiones GET
   if (event.request.method !== 'GET') return;
 
+  const isHTMLNavigation =
+    event.request.mode === 'navigate' ||
+    event.request.headers.get('accept')?.includes('text/html');
+
+  // Para el HTML principal: Network-First (siempre trae la última versión si hay internet)
+  if (isHTMLNavigation) {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseClone);
+            });
+          }
+          return networkResponse;
+        })
+        .catch(() => {
+          return caches.match(event.request).then((cached) => cached || caches.match('/'));
+        })
+    );
+    return;
+  }
+
+  // Para otros recursos: Stale-While-Revalidate
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
-        // Retornar caché y actualizar en segundo plano (stale-while-revalidate)
         fetch(event.request).then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             caches.open(CACHE_NAME).then((cache) => {
@@ -62,11 +85,6 @@ self.addEventListener('fetch', (event) => {
           cache.put(event.request, responseToCache);
         });
         return networkResponse;
-      }).catch(() => {
-        // Si no hay red y solicita HTML, devolver index.html de caché
-        if (event.request.headers.get('accept')?.includes('text/html')) {
-          return caches.match('/');
-        }
       });
     })
   );
