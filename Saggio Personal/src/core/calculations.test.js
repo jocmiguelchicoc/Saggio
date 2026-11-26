@@ -584,6 +584,27 @@ describe('Cálculos financieros - Reglas de Negocio', () => {
     expect(overview.q2.cash).toBe(0);
     expect(overview.q2.remaining).toBe(1000000);
 
+    // Si el usuario aparta efectivo en la Quincena del 30 (q: '2'), se descuenta de Q30 sin importar el día
+    const overviewWithQ2Cash = calculateMonthOverview({
+      cards: [],
+      allCardPayments: [],
+      fixedList,
+      fixedPaymentsInMonth,
+      movesInMonth: [
+        ...movesInMonth,
+        { id: 102, kind: 'efectivo', name: 'Efectivo Q30', amount: 150000, date: '2026-11-26', q: '2', cat: 'Efectivo personal' },
+      ],
+      credits: [],
+      allCreditPayments: [],
+      settings,
+      ym: '2026-11',
+      currentYM: '2026-11',
+    });
+
+    expect(overviewWithQ2Cash.q2.cash).toBe(150000);
+    expect(overviewWithQ2Cash.q2.remaining).toBe(850000);
+    expect(overviewWithQ2Cash.totalCashThisMonth).toBe(247000);
+
     // En el resumen anual (Pestaña Año), el efectivo y gastos personales/diversión se agrupan en "Efectivo (Personal y Diversión)"
     const annual = calculateAnnualSummary({
       year: 2026,

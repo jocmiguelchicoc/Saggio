@@ -363,8 +363,9 @@ export function calculateMonthOverview({
 
   // 6. Dinero en efectivo para mí / Retiros de efectivo personal por quincena
   const cashList = movesInMonth.filter(m => m.kind === 'efectivo');
-  const cashQ1List = cashList.filter(m => getQuincenaFromDate(m.date) === '1');
-  const cashQ2List = cashList.filter(m => getQuincenaFromDate(m.date) === '2');
+  const getCashQ = (m) => (m.q === '1' || m.q === '2') ? String(m.q) : getQuincenaFromDate(m.date);
+  const cashQ1List = cashList.filter(m => getCashQ(m) === '1');
+  const cashQ2List = cashList.filter(m => getCashQ(m) === '2');
 
   const cashQ1 = cashQ1List.reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
   const cashQ2 = cashQ2List.reduce((sum, m) => sum + (Number(m.amount) || 0), 0);

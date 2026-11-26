@@ -92,6 +92,7 @@ export function CashModal({
         amount,
         cat: 'Efectivo personal',
         date,
+        q: String(quincena),
       });
       onClose();
     } catch (err) {

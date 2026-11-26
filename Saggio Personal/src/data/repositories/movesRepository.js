@@ -13,13 +13,17 @@ export const movesRepository = {
   },
 
   async create(moveData) {
-    const id = await db.moves.add({
-      kind: moveData.kind, // 'ingreso' o 'imprevisto'
+    const record = {
+      kind: moveData.kind, // 'ingreso', 'imprevisto' o 'efectivo'
       name: moveData.name.trim(),
       amount: Math.round(Number(moveData.amount) || 0),
       cat: moveData.cat || 'Otros',
       date: moveData.date, // 'YYYY-MM-DD'
-    });
+    };
+    if (moveData.q !== undefined) {
+      record.q = String(moveData.q);
+    }
+    const id = await db.moves.add(record);
     return await db.moves.get(id);
   },
 
@@ -30,6 +34,7 @@ export const movesRepository = {
     if (changes.amount !== undefined) cleanChanges.amount = Math.round(Number(changes.amount) || 0);
     if (changes.cat !== undefined) cleanChanges.cat = changes.cat;
     if (changes.date !== undefined) cleanChanges.date = changes.date;
+    if (changes.q !== undefined) cleanChanges.q = String(changes.q);
 
     await db.moves.update(Number(id), cleanChanges);
     return await db.moves.get(Number(id));

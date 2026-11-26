@@ -511,21 +511,21 @@ export function InicioTab({ period, data, onNavigateTab, onOpenSettings }) {
                   cursor: 'pointer',
                   padding: '8px 12px',
                   borderRadius: 14,
-                  backgroundColor: 'rgba(245, 158, 11, 0.12)',
-                  border: '1px solid rgba(245, 158, 11, 0.3)',
+                  backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
                   textAlign: 'right',
                   transition: 'background 0.2s',
                 }}
-                title="Toca para ver o modificar el dinero apartado en efectivo"
+                title="Toca para ver o modificar el dinero apartado en efectivo de la Quincena del 30"
               >
-                <div style={{ fontSize: '0.68rem', color: 'var(--accent-amber)', fontWeight: 700, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+                <div style={{ fontSize: '0.68rem', color: '#34d399', fontWeight: 700, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
                   <Wallet size={12} />
                   <span>En efectivo para ti ✎</span>
                 </div>
-                <div className="money tabular-nums" style={{ fontSize: '1.18rem', fontWeight: 800, color: 'var(--accent-amber)', marginTop: 2 }}>
+                <div className="money tabular-nums" style={{ fontSize: '1.18rem', fontWeight: 800, color: '#34d399', marginTop: 2 }}>
                   {formatCOP(q2.cash)}
                 </div>
-                <span style={{ fontSize: '0.65rem', color: '#fcd34d', display: 'block', marginTop: 2 }}>
+                <span style={{ fontSize: '0.65rem', color: '#6ee7b7', display: 'block', marginTop: 2 }}>
                   Apartado personal
                 </span>
               </div>
@@ -559,16 +559,16 @@ export function InicioTab({ period, data, onNavigateTab, onOpenSettings }) {
                   gap: 6,
                   padding: '7px 11px',
                   borderRadius: 12,
-                  backgroundColor: 'rgba(245, 158, 11, 0.1)',
-                  border: '1px solid rgba(245, 158, 11, 0.3)',
-                  color: 'var(--accent-amber)',
+                  backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  color: '#34d399',
                   fontSize: '0.74rem',
                   fontWeight: 700,
                   cursor: 'pointer',
                   marginTop: 4,
                   transition: 'background 0.2s',
                 }}
-                title="Aparta una parte o todo el saldo libre en efectivo para ti"
+                title="Aparta una parte o todo el saldo libre en efectivo para ti en la Quincena del 30"
               >
                 <Wallet size={14} />
                 <span>Apartar efectivo</span>
