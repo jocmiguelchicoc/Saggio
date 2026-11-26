@@ -22,6 +22,7 @@ export function QuincenaDetailModal({
   selectedYM = '2026-11',
   quincenaData = {},
   onNavigateFijos,
+  onOpenCashModal,
 }) {
   if (!isOpen) return null;
 
@@ -71,6 +72,14 @@ export function QuincenaDetailModal({
           border: 'rgba(236, 72, 153, 0.3)',
           label: 'Gasto Imprevisto',
         };
+      case 'efectivo':
+        return {
+          icon: <Wallet size={18} />,
+          bg: 'rgba(16, 185, 129, 0.15)',
+          color: '#34d399',
+          border: 'rgba(16, 185, 129, 0.3)',
+          label: 'Efectivo para mí',
+        };
       case 'fijo':
       default:
         return {
@@ -95,7 +104,7 @@ export function QuincenaDetailModal({
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
+            gridTemplateColumns: quincenaData.cash > 0 ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)',
             gap: 8,
             padding: '14px',
             backgroundColor: 'rgba(255, 255, 255, 0.03)',
@@ -113,20 +122,32 @@ export function QuincenaDetailModal({
             </div>
           </div>
 
-          {/* Gastado Q */}
+          {/* Gastado Q / Obligaciones */}
           <div>
             <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>
-              Gastado Q
+              {quincenaData.cash > 0 ? 'Obligaciones' : 'Gastado Q'}
             </div>
             <div className="money tabular-nums" style={{ fontSize: '0.98rem', fontWeight: 800, color: '#f8fafc', marginTop: 2 }}>
-              {formatCOP(spent)}
+              {formatCOP(quincenaData.cash > 0 ? (quincenaData.obligationsSpent || 0) : spent)}
             </div>
           </div>
 
-          {/* Te queda libre */}
+          {/* Apartado en efectivo si existe */}
+          {quincenaData.cash > 0 && (
+            <div>
+              <div style={{ fontSize: '0.68rem', color: '#34d399', fontWeight: 700, textTransform: 'uppercase' }}>
+                En efectivo
+              </div>
+              <div className="money tabular-nums" style={{ fontSize: '0.98rem', fontWeight: 800, color: '#34d399', marginTop: 2 }}>
+                {formatCOP(quincenaData.cash)}
+              </div>
+            </div>
+          )}
+
+          {/* Te queda libre / En cuenta */}
           <div>
             <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>
-              Te queda
+              {quincenaData.cash > 0 ? 'En cuenta' : 'Te queda'}
             </div>
             <div
               className="money tabular-nums"
@@ -178,6 +199,11 @@ export function QuincenaDetailModal({
                 return (
                   <div
                     key={item.id}
+                    onClick={() => {
+                      if (item.type === 'efectivo' && onOpenCashModal && item.rawMove) {
+                        onOpenCashModal(item.rawMove);
+                      }
+                    }}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -186,7 +212,9 @@ export function QuincenaDetailModal({
                       backgroundColor: 'rgba(255, 255, 255, 0.03)',
                       borderRadius: 14,
                       border: '1px solid var(--border-subtle)',
+                      cursor: item.type === 'efectivo' ? 'pointer' : 'default',
                     }}
+                    title={item.type === 'efectivo' ? 'Toca para editar este dinero en efectivo' : undefined}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: 1 }}>
                       <div

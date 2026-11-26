@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { PlusCircle, MinusCircle, ArrowUpDown } from 'lucide-react';
+import { PlusCircle, MinusCircle, ArrowUpDown, Wallet } from 'lucide-react';
 import { MoveFormModal } from './MoveFormModal.jsx';
 import { EmptyState } from '../../common/EmptyState.jsx';
 import { DoubleTapButton } from '../../common/DoubleTapButton.jsx';
@@ -25,6 +25,10 @@ export function ExtrasTab({ period, data }) {
 
   const totalUnexpected = movesInMonth
     .filter((m) => m.kind === 'imprevisto')
+    .reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
+
+  const totalCash = movesInMonth
+    .filter((m) => m.kind === 'efectivo')
     .reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
 
   const balance = totalExtraIncome - totalUnexpected;
@@ -72,7 +76,7 @@ export function ExtrasTab({ period, data }) {
         className="card"
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
+          gridTemplateColumns: totalCash > 0 ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)',
           gap: 8,
           marginBottom: 16,
           textAlign: 'center',
@@ -91,6 +95,14 @@ export function ExtrasTab({ period, data }) {
             -{formatCOP(totalUnexpected)}
           </div>
         </div>
+        {totalCash > 0 && (
+          <div>
+            <div style={{ fontSize: '0.72rem', color: '#34d399', fontWeight: 600 }}>En Efectivo</div>
+            <div className="money tabular-nums" style={{ fontSize: '0.98rem', fontWeight: 800, color: '#34d399' }}>
+              {formatCOP(totalCash)}
+            </div>
+          </div>
+        )}
         <div>
           <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>Diferencia</div>
           <div
@@ -106,8 +118,8 @@ export function ExtrasTab({ period, data }) {
         </div>
       </div>
 
-      {/* 2 Botones de acción directa: Ingreso Extra e Imprevisto */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 18 }}>
+      {/* 3 Botones de acción directa: Ingreso Extra, Imprevisto y Efectivo */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 18 }}>
         <button
           type="button"
           onClick={() => handleOpenAdd('ingreso')}
@@ -119,10 +131,13 @@ export function ExtrasTab({ period, data }) {
             color: 'var(--accent-green)',
             fontWeight: 700,
             borderRadius: 16,
+            padding: '0 6px',
+            fontSize: '0.8rem',
+            gap: 6,
           }}
         >
-          <PlusCircle size={20} />
-          <span>Ingreso extra</span>
+          <PlusCircle size={18} />
+          <span>Ingreso</span>
         </button>
 
         <button
@@ -136,10 +151,33 @@ export function ExtrasTab({ period, data }) {
             color: 'var(--accent-red)',
             fontWeight: 700,
             borderRadius: 16,
+            padding: '0 6px',
+            fontSize: '0.8rem',
+            gap: 6,
           }}
         >
-          <MinusCircle size={20} />
+          <MinusCircle size={18} />
           <span>Imprevisto</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleOpenAdd('efectivo')}
+          className="btn-secondary"
+          style={{
+            height: 50,
+            backgroundColor: 'rgba(16, 185, 129, 0.12)',
+            borderColor: 'rgba(16, 185, 129, 0.35)',
+            color: '#34d399',
+            fontWeight: 700,
+            borderRadius: 16,
+            padding: '0 6px',
+            fontSize: '0.8rem',
+            gap: 6,
+          }}
+        >
+          <Wallet size={18} />
+          <span>Efectivo</span>
         </button>
       </div>
 
@@ -156,6 +194,7 @@ export function ExtrasTab({ period, data }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {movesInMonth.map((m) => {
             const isIngreso = m.kind === 'ingreso';
+            const isEfectivo = m.kind === 'efectivo';
 
             return (
               <div
@@ -167,7 +206,7 @@ export function ExtrasTab({ period, data }) {
                   padding: '12px 14px',
                   borderRadius: 16,
                   backgroundColor: 'var(--bg-card)',
-                  border: '1px solid var(--border-subtle)',
+                  border: isEfectivo ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid var(--border-subtle)',
                 }}
               >
                 <div
@@ -183,9 +222,13 @@ export function ExtrasTab({ period, data }) {
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
                     }}
                   >
-                    {m.name}
+                    {isEfectivo && <Wallet size={16} color="#34d399" />}
+                    <span>{m.name}</span>
                   </div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                     {m.cat} · {formatDateFriendly(m.date)}
@@ -199,12 +242,12 @@ export function ExtrasTab({ period, data }) {
                     style={{
                       fontWeight: 800,
                       fontSize: '1rem',
-                      color: isIngreso ? 'var(--accent-green)' : 'var(--accent-red)',
+                      color: isIngreso ? 'var(--accent-green)' : isEfectivo ? '#34d399' : 'var(--accent-red)',
                       textAlign: 'right',
                       cursor: 'pointer',
                     }}
                   >
-                    {isIngreso ? `+${formatCOP(m.amount)}` : `-${formatCOP(m.amount)}`}
+                    {isIngreso ? `+${formatCOP(m.amount)}` : isEfectivo ? `💵 ${formatCOP(m.amount)}` : `-${formatCOP(m.amount)}`}
                   </div>
 
                   <DoubleTapButton

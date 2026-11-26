@@ -537,4 +537,51 @@ describe('Cálculos financieros - Reglas de Negocio', () => {
     expect(overview.q2.spent).toBe(0);
     expect(overview.q2.paidItems.length).toBe(0);
   });
+
+  it('Dinero en efectivo para mí: apartar $97.000 el 25 de noviembre descuenta de la cuenta de Q15 y queda disponible como efectivo personal', () => {
+    const settings = { q1: 1000000, q2: 1000000 };
+    const fixedList = [
+      { id: 1, name: 'Servicios', amount: 903000, q: '1', cat: 'Servicios' },
+    ];
+    const fixedPaymentsInMonth = [
+      { id: '1_2026-11', fixedId: 1, name: 'Servicios', amount: 903000, date: '2026-11-16', q: '1' },
+    ];
+    // Usuario aparta $97.000 en efectivo el 25 de noviembre
+    const movesInMonth = [
+      { id: 101, kind: 'efectivo', name: 'Dinero para mí en efectivo', amount: 97000, date: '2026-11-25', cat: 'Efectivo personal' },
+    ];
+
+    const overview = calculateMonthOverview({
+      cards: [],
+      allCardPayments: [],
+      fixedList,
+      fixedPaymentsInMonth,
+      movesInMonth,
+      credits: [],
+      allCreditPayments: [],
+      settings,
+      ym: '2026-11',
+      currentYM: '2026-11',
+    });
+
+    // En Quincena 15:
+    // Sueldo: 1.000.000
+    // Facturas: 903.000
+    // Efectivo apartado: 97.000
+    // Total gastado/descontado de la cuenta: 1.000.000
+    expect(overview.q1.cash).toBe(97000);
+    expect(overview.q1.remaining).toBe(0); // Queda $0 en la cuenta bancaria
+    expect(overview.q1.remainingTotal).toBe(97000); // Pero el usuario tiene sus $97.000 en efectivo
+    expect(overview.totalCashThisMonth).toBe(97000);
+
+    // Debe aparecer en la lista de movimientos/pagos de Q1
+    const cashItem = overview.q1.paidItems.find(i => i.type === 'efectivo');
+    expect(cashItem).toBeDefined();
+    expect(cashItem.amount).toBe(97000);
+    expect(cashItem.typeLabel).toBe('Efectivo para mí');
+
+    // Quincena 30 no tiene efectivo ni pagos
+    expect(overview.q2.cash).toBe(0);
+    expect(overview.q2.remaining).toBe(1000000);
+  });
 });

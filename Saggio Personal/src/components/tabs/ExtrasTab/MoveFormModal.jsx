@@ -5,13 +5,15 @@ import { DoubleTapButton } from '../../common/DoubleTapButton.jsx';
 import { getCurrentColombiaDate } from '../../../core/formatters.js';
 import { UNEXPECTED_CATEGORIES, EXTRA_INCOME_CATEGORIES } from '../../../core/constants.js';
 
+const CASH_CATEGORIES = ['Efectivo personal', 'Gastos personales', 'Salidas y ocio', 'Bolsillo', 'Otro'];
+
 export function MoveFormModal({
   isOpen,
   onClose,
   onSave,
   onDelete,
   initialData = null,
-  defaultKind = 'ingreso', // 'ingreso' | 'imprevisto'
+  defaultKind = 'ingreso', // 'ingreso' | 'imprevisto' | 'efectivo'
 }) {
   const isEditing = Boolean(initialData && initialData.id);
 
@@ -23,20 +25,21 @@ export function MoveFormModal({
   const [error, setError] = useState('');
 
   const isIngreso = kind === 'ingreso';
-  const categoriesList = isIngreso ? EXTRA_INCOME_CATEGORIES : UNEXPECTED_CATEGORIES;
+  const isEfectivo = kind === 'efectivo';
+  const categoriesList = isIngreso ? EXTRA_INCOME_CATEGORIES : isEfectivo ? CASH_CATEGORIES : UNEXPECTED_CATEGORIES;
 
   useEffect(() => {
     if (initialData) {
       setKind(initialData.kind || defaultKind);
       setName(initialData.name || '');
       setAmount(Number(initialData.amount) || 0);
-      setCat(initialData.cat || (initialData.kind === 'ingreso' ? EXTRA_INCOME_CATEGORIES[0] : UNEXPECTED_CATEGORIES[0]));
+      setCat(initialData.cat || (initialData.kind === 'ingreso' ? EXTRA_INCOME_CATEGORIES[0] : initialData.kind === 'efectivo' ? CASH_CATEGORIES[0] : UNEXPECTED_CATEGORIES[0]));
       setDate(initialData.date || getCurrentColombiaDate());
     } else {
       setKind(defaultKind);
-      setName('');
+      setName(defaultKind === 'efectivo' ? 'Dinero para mí en efectivo' : '');
       setAmount(0);
-      setCat(defaultKind === 'ingreso' ? EXTRA_INCOME_CATEGORIES[0] : UNEXPECTED_CATEGORIES[0]);
+      setCat(defaultKind === 'ingreso' ? EXTRA_INCOME_CATEGORIES[0] : defaultKind === 'efectivo' ? CASH_CATEGORIES[0] : UNEXPECTED_CATEGORIES[0]);
       setDate(getCurrentColombiaDate());
     }
     setError('');
@@ -45,7 +48,10 @@ export function MoveFormModal({
   // Si cambia el tipo, ajustar la categoría por defecto
   const handleKindChange = (newKind) => {
     setKind(newKind);
-    setCat(newKind === 'ingreso' ? EXTRA_INCOME_CATEGORIES[0] : UNEXPECTED_CATEGORIES[0]);
+    setCat(newKind === 'ingreso' ? EXTRA_INCOME_CATEGORIES[0] : newKind === 'efectivo' ? CASH_CATEGORIES[0] : UNEXPECTED_CATEGORIES[0]);
+    if (newKind === 'efectivo' && !name) {
+      setName('Dinero para mí en efectivo');
+    }
   };
 
   const handleSubmit = (e) => {
@@ -77,11 +83,11 @@ export function MoveFormModal({
     <BottomSheet
       isOpen={isOpen}
       onClose={onClose}
-      title={isEditing ? 'Editar Movimiento' : isIngreso ? 'Nuevo Ingreso Extra' : 'Nuevo Imprevisto'}
+      title={isEditing ? 'Editar Movimiento' : isIngreso ? 'Nuevo Ingreso Extra' : isEfectivo ? 'Dinero para mí en efectivo' : 'Nuevo Imprevisto'}
     >
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {/* Selector de Tipo */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
           <button
             type="button"
             onClick={() => handleKindChange('ingreso')}
@@ -92,8 +98,9 @@ export function MoveFormModal({
               backgroundColor: isIngreso ? 'rgba(34, 197, 94, 0.15)' : 'var(--bg-subtle)',
               color: isIngreso ? 'var(--accent-green)' : 'var(--text-secondary)',
               fontWeight: 700,
-              fontSize: '0.9rem',
+              fontSize: '0.8rem',
               cursor: 'pointer',
+              padding: '0 4px',
             }}
           >
             + Ingreso Extra
@@ -105,15 +112,34 @@ export function MoveFormModal({
             style={{
               height: 46,
               borderRadius: 14,
-              border: !isIngreso ? '2px solid var(--accent-red)' : '1px solid var(--border-subtle)',
-              backgroundColor: !isIngreso ? 'rgba(239, 68, 68, 0.15)' : 'var(--bg-subtle)',
-              color: !isIngreso ? 'var(--accent-red)' : 'var(--text-secondary)',
+              border: kind === 'imprevisto' ? '2px solid var(--accent-red)' : '1px solid var(--border-subtle)',
+              backgroundColor: kind === 'imprevisto' ? 'rgba(239, 68, 68, 0.15)' : 'var(--bg-subtle)',
+              color: kind === 'imprevisto' ? 'var(--accent-red)' : 'var(--text-secondary)',
               fontWeight: 700,
-              fontSize: '0.9rem',
+              fontSize: '0.8rem',
               cursor: 'pointer',
+              padding: '0 4px',
             }}
           >
-            − Gasto Imprevisto
+            − Imprevisto
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleKindChange('efectivo')}
+            style={{
+              height: 46,
+              borderRadius: 14,
+              border: isEfectivo ? '2px solid #10b981' : '1px solid var(--border-subtle)',
+              backgroundColor: isEfectivo ? 'rgba(16, 185, 129, 0.15)' : 'var(--bg-subtle)',
+              color: isEfectivo ? '#34d399' : 'var(--text-secondary)',
+              fontWeight: 700,
+              fontSize: '0.8rem',
+              cursor: 'pointer',
+              padding: '0 4px',
+            }}
+          >
+            💵 Efectivo
           </button>
         </div>
 
@@ -123,14 +149,14 @@ export function MoveFormModal({
             htmlFor="move-name"
             style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}
           >
-            {isIngreso ? '¿De qué fue el ingreso?' : '¿En qué se gastó?'} *
+            {isIngreso ? '¿De qué fue el ingreso?' : isEfectivo ? '¿Para qué es el efectivo?' : '¿En qué se gastó?'} *
           </label>
           <input
             id="move-name"
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder={isIngreso ? 'Ej. Trabajo del sábado, Venta bicicleta...' : 'Ej. Arreglo moto, Farmacia, Taxi...'}
+            placeholder={isIngreso ? 'Ej. Trabajo del sábado, Venta bicicleta...' : isEfectivo ? 'Ej. Dinero para mí en efectivo, salidas...' : 'Ej. Arreglo moto, Farmacia, Taxi...'}
             autoFocus={!isEditing}
             style={{
               width: '100%',

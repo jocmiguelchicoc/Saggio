@@ -107,7 +107,7 @@ export function calculateCardsSummary(cards = [], allCardPayments = [], ym) {
     totalDebt += balance;
     totalInitial += Number(card.initial) || 0;
     totalPaidOverall += historical.totalPaid;
-    
+
     // Solo sumamos cuotas mensuales de tarjetas activas
     if (balance > 0) {
       totalMonthlyQuotas += Number(card.monthly) || 0;
@@ -361,12 +361,24 @@ export function calculateMonthOverview({
   const unexpectedQ2 = unexpectedQ2List.reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
   const unexpectedSpentThisMonth = unexpectedQ1 + unexpectedQ2;
 
-  // Totales gastados por quincena
-  const spentQ1 = cardSpentQ1 + fixedSpentQ1 + creditSpentQ1 + unexpectedQ1;
-  const spentQ2 = cardSpentQ2 + fixedSpentQ2 + creditSpentQ2 + unexpectedQ2;
+  // 6. Dinero en efectivo para mí / Retiros de efectivo personal por quincena
+  const cashList = movesInMonth.filter(m => m.kind === 'efectivo');
+  const cashQ1List = cashList.filter(m => getQuincenaFromDate(m.date) === '1');
+  const cashQ2List = cashList.filter(m => getQuincenaFromDate(m.date) === '2');
+
+  const cashQ1 = cashQ1List.reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
+  const cashQ2 = cashQ2List.reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
+  const totalCashThisMonth = cashQ1 + cashQ2;
+
+  // Totales gastados por quincena (obligaciones + imprevistos + efectivo apartado)
+  const obligationsSpentQ1 = cardSpentQ1 + fixedSpentQ1 + creditSpentQ1 + unexpectedQ1;
+  const obligationsSpentQ2 = cardSpentQ2 + fixedSpentQ2 + creditSpentQ2 + unexpectedQ2;
+
+  const spentQ1 = obligationsSpentQ1 + cashQ1;
+  const spentQ2 = obligationsSpentQ2 + cashQ2;
   const totalSpent = spentQ1 + spentQ2;
 
-  // 6. Te queda libre real
+  // 7. Te queda libre real (en cuenta bancaria tras pagar y apartar efectivo)
   const remainingQ1 = totalIncomeQ1 - spentQ1;
   const remainingQ2 = totalIncomeQ2 - spentQ2;
   const remainingThisMonth = totalIncome - totalSpent;
@@ -396,7 +408,7 @@ export function calculateMonthOverview({
   const totalPending = pendingQ1 + pendingQ2;
 
   // 8. Construcción de listas detalladas de pagos realizados en cada quincena
-  const buildPaidItems = (cardPays, fixedPays, creditPays, unexpPays) => {
+  const buildPaidItems = (cardPays, fixedPays, creditPays, unexpPays, cashPays = []) => {
     const list = [];
 
     for (const p of cardPays) {
@@ -440,20 +452,36 @@ export function calculateMonthOverview({
     for (const m of unexpPays) {
       list.push({
         id: `move-${m.id || Math.random()}`,
-        name: m.description || m.category || 'Gasto Imprevisto',
+        moveId: m.id,
+        name: m.name || m.description || m.cat || 'Gasto Imprevisto',
         type: 'imprevisto',
         typeLabel: 'Imprevisto',
         amount: Number(m.amount) || 0,
         date: m.date,
         notes: m.notes,
+        rawMove: m,
+      });
+    }
+
+    for (const m of cashPays) {
+      list.push({
+        id: `cash-${m.id || Math.random()}`,
+        moveId: m.id,
+        name: m.name || 'Dinero para mí en efectivo',
+        type: 'efectivo',
+        typeLabel: 'Efectivo para mí',
+        amount: Number(m.amount) || 0,
+        date: m.date,
+        notes: m.cat || m.notes || 'Apartado personal en efectivo',
+        rawMove: m,
       });
     }
 
     return list.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   };
 
-  const paidItemsQ1 = buildPaidItems(cardPaymentsQ1, fixedPaymentsQ1, creditPaymentsQ1, unexpectedQ1List);
-  const paidItemsQ2 = buildPaidItems(cardPaymentsQ2, fixedPaymentsQ2, creditPaymentsQ2, unexpectedQ2List);
+  const paidItemsQ1 = buildPaidItems(cardPaymentsQ1, fixedPaymentsQ1, creditPaymentsQ1, unexpectedQ1List, cashQ1List);
+  const paidItemsQ2 = buildPaidItems(cardPaymentsQ2, fixedPaymentsQ2, creditPaymentsQ2, unexpectedQ2List, cashQ2List);
 
   return {
     baseSalaryQ1,
@@ -464,6 +492,8 @@ export function calculateMonthOverview({
     extraIncomes: extraIncomesQ1 + extraIncomesQ2,
     totalIncome,
     totalSpent,
+    totalCashThisMonth,
+    obligationsSpentThisMonth: obligationsSpentQ1 + obligationsSpentQ2,
     remainingThisMonth,
     totalPending,
     totalCardDebt: cardsSummary.totalDebt,
@@ -475,11 +505,15 @@ export function calculateMonthOverview({
       extraIncomes: extraIncomesQ1,
       totalIncome: totalIncomeQ1,
       spent: spentQ1,
+      obligationsSpent: obligationsSpentQ1,
+      cash: cashQ1,
+      cashList: cashQ1List,
       cardSpent: cardSpentQ1,
       fixedSpent: fixedSpentQ1,
       creditSpent: creditSpentQ1,
       unexpectedSpent: unexpectedQ1,
       remaining: remainingQ1,
+      remainingTotal: totalIncomeQ1 - obligationsSpentQ1,
       pending: pendingQ1,
       paidItems: paidItemsQ1,
       extraIncomesList: extraIncomesQ1List,
@@ -491,11 +525,15 @@ export function calculateMonthOverview({
       extraIncomes: extraIncomesQ2,
       totalIncome: totalIncomeQ2,
       spent: spentQ2,
+      obligationsSpent: obligationsSpentQ2,
+      cash: cashQ2,
+      cashList: cashQ2List,
       cardSpent: cardSpentQ2,
       fixedSpent: fixedSpentQ2,
       creditSpent: creditSpentQ2,
       unexpectedSpent: unexpectedQ2,
       remaining: remainingQ2,
+      remainingTotal: totalIncomeQ2 - obligationsSpentQ2,
       pending: pendingQ2,
       paidItems: paidItemsQ2,
       extraIncomesList: extraIncomesQ2List,

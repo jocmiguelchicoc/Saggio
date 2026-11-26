@@ -4,6 +4,8 @@ import { formatCOP } from '../../../core/formatters.js';
 import { QUINCENA_LABELS } from '../../../core/constants.js';
 import { Calendar, CreditCard, Landmark, CalendarCheck2, ArrowUpDown, ChevronRight, Wallet, ShieldCheck } from 'lucide-react';
 import { QuincenaDetailModal } from './QuincenaDetailModal.jsx';
+import { CashModal } from './CashModal.jsx';
+import { movesRepository } from '../../../data/repositories/movesRepository.js';
 
 export function InicioTab({ period, data, onNavigateTab, onOpenSettings }) {
   const { selectedYM, currentRealYM, currentRealQuincena } = period;
@@ -12,6 +14,29 @@ export function InicioTab({ period, data, onNavigateTab, onOpenSettings }) {
   // Estado para el modal de detalle de movimientos de la quincena
   const [isQDetailOpen, setIsQDetailOpen] = useState(false);
   const [selectedQForModal, setSelectedQForModal] = useState('1');
+
+  // Estado para el modal de dinero en efectivo para mí
+  const [isCashModalOpen, setIsCashModalOpen] = useState(false);
+  const [cashModalQ, setCashModalQ] = useState('1');
+  const [cashModalInitialMove, setCashModalInitialMove] = useState(null);
+
+  const handleOpenCashModal = (q = '1', initialMove = null) => {
+    setCashModalQ(q);
+    setCashModalInitialMove(initialMove);
+    setIsCashModalOpen(true);
+  };
+
+  const handleSaveCash = async (moveData) => {
+    if (moveData.id) {
+      await movesRepository.update(moveData.id, moveData);
+    } else {
+      await movesRepository.create(moveData);
+    }
+  };
+
+  const handleDeleteCash = async (id) => {
+    await movesRepository.delete(id);
+  };
 
   // Filtramos por fecha real del flujo de caja o por mes contable si no tiene fecha
   const fixedPaymentsInMonth = allFixedPayments.filter(
@@ -91,12 +116,36 @@ export function InicioTab({ period, data, onNavigateTab, onOpenSettings }) {
             letterSpacing: '-0.03em',
             color: overview.remainingThisMonth >= 0 ? '#38bdf8' : '#f43f5e',
             lineHeight: 1.1,
-            marginBottom: 20,
+            marginBottom: overview.totalCashThisMonth > 0 ? 10 : 20,
             textShadow: overview.remainingThisMonth >= 0 ? '0 0 28px rgba(56, 189, 248, 0.3)' : '0 0 28px rgba(244, 63, 94, 0.3)',
           }}
         >
           {formatCOP(overview.remainingThisMonth)}
         </div>
+
+        {overview.totalCashThisMonth > 0 && (
+          <div
+            onClick={() => handleOpenCashModal('1')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '6px 12px',
+              borderRadius: 12,
+              backgroundColor: 'rgba(16, 185, 129, 0.15)',
+              border: '1px solid rgba(16, 185, 129, 0.35)',
+              color: '#34d399',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              marginBottom: 16,
+              cursor: 'pointer',
+            }}
+            title="Toca para ver o modificar el dinero en efectivo apartado"
+          >
+            <Wallet size={14} />
+            <span>Tienes {formatCOP(overview.totalCashThisMonth)} en efectivo personal</span>
+          </div>
+        )}
 
         {/* 2 Columnas: Ingresos y Gastado del mes */}
         <div
@@ -221,23 +270,98 @@ export function InicioTab({ period, data, onNavigateTab, onOpenSettings }) {
           )}
         </div>
 
-        {/* Cifra destacada: Te queda en la Quincena del 15 */}
+        {/* Cifra destacada: Te queda en la Quincena del 15 y Efectivo para mí */}
         <div style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            Te queda en esta quincena
-          </div>
-          <div
-            className="money tabular-nums"
-            style={{
-              fontSize: '2rem',
-              fontWeight: 800,
-              color: q1.remaining >= 0 ? 'var(--accent-blue)' : 'var(--accent-red)',
-              lineHeight: 1.15,
-              marginTop: 2,
-            }}
-          >
-            {formatCOP(q1.remaining)}
-          </div>
+          {q1.cash > 0 ? (
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+              <div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Te queda en cuenta
+                </div>
+                <div
+                  className="money tabular-nums"
+                  style={{
+                    fontSize: '1.9rem',
+                    fontWeight: 800,
+                    color: q1.remaining >= 0 ? 'var(--accent-blue)' : 'var(--accent-red)',
+                    lineHeight: 1.15,
+                    marginTop: 2,
+                  }}
+                >
+                  {formatCOP(q1.remaining)}
+                </div>
+              </div>
+
+              <div
+                onClick={() => handleOpenCashModal('1')}
+                style={{
+                  cursor: 'pointer',
+                  padding: '8px 12px',
+                  borderRadius: 14,
+                  backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  textAlign: 'right',
+                  transition: 'background 0.2s',
+                }}
+                title="Toca para ver o modificar el dinero apartado en efectivo"
+              >
+                <div style={{ fontSize: '0.68rem', color: '#34d399', fontWeight: 700, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+                  <Wallet size={12} />
+                  <span>En efectivo para ti ✎</span>
+                </div>
+                <div className="money tabular-nums" style={{ fontSize: '1.18rem', fontWeight: 800, color: '#34d399', marginTop: 2 }}>
+                  {formatCOP(q1.cash)}
+                </div>
+                <span style={{ fontSize: '0.65rem', color: '#6ee7b7', display: 'block', marginTop: 2 }}>
+                  Apartado personal
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+              <div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Te queda en esta quincena
+                </div>
+                <div
+                  className="money tabular-nums"
+                  style={{
+                    fontSize: '2rem',
+                    fontWeight: 800,
+                    color: q1.remaining >= 0 ? 'var(--accent-blue)' : 'var(--accent-red)',
+                    lineHeight: 1.15,
+                    marginTop: 2,
+                  }}
+                >
+                  {formatCOP(q1.remaining)}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleOpenCashModal('1')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '7px 11px',
+                  borderRadius: 12,
+                  backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  color: '#34d399',
+                  fontSize: '0.74rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  marginTop: 4,
+                  transition: 'background 0.2s',
+                }}
+                title="Aparta una parte o todo el saldo libre en efectivo para ti"
+              >
+                <Wallet size={14} />
+                <span>Apartar efectivo</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Micro-barra de progreso de consumo de la quincena */}
@@ -359,23 +483,98 @@ export function InicioTab({ period, data, onNavigateTab, onOpenSettings }) {
           )}
         </div>
 
-        {/* Cifra destacada: Te queda en la Quincena del 30 */}
+        {/* Cifra destacada: Te queda en la Quincena del 30 y Efectivo para mí */}
         <div style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            Te queda en esta quincena
-          </div>
-          <div
-            className="money tabular-nums"
-            style={{
-              fontSize: '2rem',
-              fontWeight: 800,
-              color: q2.remaining >= 0 ? 'var(--accent-amber)' : 'var(--accent-red)',
-              lineHeight: 1.15,
-              marginTop: 2,
-            }}
-          >
-            {formatCOP(q2.remaining)}
-          </div>
+          {q2.cash > 0 ? (
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+              <div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Te queda en cuenta
+                </div>
+                <div
+                  className="money tabular-nums"
+                  style={{
+                    fontSize: '1.9rem',
+                    fontWeight: 800,
+                    color: q2.remaining >= 0 ? 'var(--accent-amber)' : 'var(--accent-red)',
+                    lineHeight: 1.15,
+                    marginTop: 2,
+                  }}
+                >
+                  {formatCOP(q2.remaining)}
+                </div>
+              </div>
+
+              <div
+                onClick={() => handleOpenCashModal('2')}
+                style={{
+                  cursor: 'pointer',
+                  padding: '8px 12px',
+                  borderRadius: 14,
+                  backgroundColor: 'rgba(245, 158, 11, 0.12)',
+                  border: '1px solid rgba(245, 158, 11, 0.3)',
+                  textAlign: 'right',
+                  transition: 'background 0.2s',
+                }}
+                title="Toca para ver o modificar el dinero apartado en efectivo"
+              >
+                <div style={{ fontSize: '0.68rem', color: 'var(--accent-amber)', fontWeight: 700, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+                  <Wallet size={12} />
+                  <span>En efectivo para ti ✎</span>
+                </div>
+                <div className="money tabular-nums" style={{ fontSize: '1.18rem', fontWeight: 800, color: 'var(--accent-amber)', marginTop: 2 }}>
+                  {formatCOP(q2.cash)}
+                </div>
+                <span style={{ fontSize: '0.65rem', color: '#fcd34d', display: 'block', marginTop: 2 }}>
+                  Apartado personal
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+              <div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Te queda en esta quincena
+                </div>
+                <div
+                  className="money tabular-nums"
+                  style={{
+                    fontSize: '2rem',
+                    fontWeight: 800,
+                    color: q2.remaining >= 0 ? 'var(--accent-amber)' : 'var(--accent-red)',
+                    lineHeight: 1.15,
+                    marginTop: 2,
+                  }}
+                >
+                  {formatCOP(q2.remaining)}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleOpenCashModal('2')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '7px 11px',
+                  borderRadius: 12,
+                  backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                  border: '1px solid rgba(245, 158, 11, 0.3)',
+                  color: 'var(--accent-amber)',
+                  fontSize: '0.74rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  marginTop: 4,
+                  transition: 'background 0.2s',
+                }}
+                title="Aparta una parte o todo el saldo libre en efectivo para ti"
+              >
+                <Wallet size={14} />
+                <span>Apartar efectivo</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Micro-barra de progreso de consumo de la quincena */}
@@ -645,6 +844,22 @@ export function InicioTab({ period, data, onNavigateTab, onOpenSettings }) {
         selectedYM={selectedYM}
         quincenaData={selectedQForModal === '1' ? q1 : q2}
         onNavigateFijos={() => onNavigateTab && onNavigateTab('fijos')}
+        onOpenCashModal={(move) => {
+          setIsQDetailOpen(false);
+          handleOpenCashModal(selectedQForModal, move);
+        }}
+      />
+
+      {/* Modal de apartado de efectivo para mí */}
+      <CashModal
+        isOpen={isCashModalOpen}
+        onClose={() => setIsCashModalOpen(false)}
+        quincena={cashModalQ}
+        availableBalance={cashModalQ === '1' ? (q1.remaining > 0 ? q1.remaining : 0) : (q2.remaining > 0 ? q2.remaining : 0)}
+        cashMoves={cashModalQ === '1' ? (q1.cashList || []) : (q2.cashList || [])}
+        initialMove={cashModalInitialMove}
+        onSave={handleSaveCash}
+        onDelete={handleDeleteCash}
       />
     </div>
   );
