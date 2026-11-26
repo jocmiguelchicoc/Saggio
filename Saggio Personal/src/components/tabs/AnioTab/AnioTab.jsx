@@ -23,6 +23,7 @@ import {
   AlertTriangle,
   Tag,
   Layers,
+  Wallet,
 } from 'lucide-react';
 import { calculateAnnualSummary } from '../../../core/calculations.js';
 import { formatCOP } from '../../../core/formatters.js';
@@ -30,6 +31,7 @@ import { backupRepository } from '../../../data/repositories/backupRepository.js
 
 function getCategoryIcon(catName = '') {
   const norm = catName.toLowerCase();
+  if (norm.includes('efectivo') || norm.includes('personal') || norm.includes('diversi')) return <Wallet size={15} />;
   if (norm.includes('viv') || norm.includes('arrien')) return <Home size={15} />;
   if (norm.includes('serv') || norm.includes('luz') || norm.includes('agua') || norm.includes('gas') || norm.includes('inter')) return <Zap size={15} />;
   if (norm.includes('alim') || norm.includes('comid') || norm.includes('merc')) return <Utensils size={15} />;
@@ -143,10 +145,30 @@ export function AnioTab({ period, data }) {
             letterSpacing: '-0.03em',
             color: '#f8fafc',
             lineHeight: 1.1,
-            marginBottom: 20,
+            marginBottom: 12,
           }}
         >
           {formatCOP(annual.totalYearSpent)}
+        </div>
+
+        {/* Destacado de Efectivo / Gastos Personales y Diversión en el año */}
+        <div
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '7px 12px',
+            borderRadius: 12,
+            backgroundColor: 'rgba(16, 185, 129, 0.14)',
+            border: '1px solid rgba(16, 185, 129, 0.35)',
+            color: '#34d399',
+            fontSize: '0.78rem',
+            fontWeight: 700,
+            marginBottom: 16,
+          }}
+        >
+          <Wallet size={15} />
+          <span>Efectivo (Personal y Diversión) en {selectedYear}: {formatCOP(annual.totalYearCash || 0)}</span>
         </div>
 
         <div

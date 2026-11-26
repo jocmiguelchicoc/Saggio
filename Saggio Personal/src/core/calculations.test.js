@@ -583,5 +583,21 @@ describe('Cálculos financieros - Reglas de Negocio', () => {
     // Quincena 30 no tiene efectivo ni pagos
     expect(overview.q2.cash).toBe(0);
     expect(overview.q2.remaining).toBe(1000000);
+
+    // En el resumen anual (Pestaña Año), el efectivo y gastos personales/diversión se agrupan en "Efectivo (Personal y Diversión)"
+    const annual = calculateAnnualSummary({
+      year: 2026,
+      cards: [],
+      allCardPayments: [],
+      allFixedPayments: fixedPaymentsInMonth.map(fp => ({ ...fp, ym: '2026-11', cat: 'Servicios' })),
+      allMoves: movesInMonth,
+      settings,
+      currentYM: '2026-11',
+    });
+
+    expect(annual.totalYearCash).toBe(97000);
+    const cashCat = annual.categoriesList.find(c => c.category === 'Efectivo (Personal y Diversión)');
+    expect(cashCat).toBeDefined();
+    expect(cashCat.amount).toBe(97000);
   });
 });

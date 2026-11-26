@@ -560,6 +560,7 @@ export function calculateAnnualSummary({
 
   let totalYearSpent = 0;
   let totalYearIncome = 0;
+  let totalYearCash = 0;
 
   const cardMap = new Map();
   for (const c of cards) {
@@ -615,6 +616,9 @@ export function calculateAnnualSummary({
     const monthUnexpected = monthMoves
       .filter(move => move.kind === 'imprevisto')
       .reduce((sum, move) => sum + (Number(move.amount) || 0), 0);
+    const monthCash = monthMoves
+      .filter(move => move.kind === 'efectivo')
+      .reduce((sum, move) => sum + (Number(move.amount) || 0), 0);
 
     const monthIncome = monthBaseIncome + monthExtraIncomes;
 
@@ -626,24 +630,42 @@ export function calculateAnnualSummary({
     const monthFixedPayments = allFixedPayments.filter(fp => fp.ym === ym);
     const monthFixedSpent = monthFixedPayments.reduce((sum, fp) => sum + (Number(fp.amount) || 0), 0);
 
-    const monthSpent = monthCardSpent + monthFixedSpent + monthUnexpected;
+    const monthSpent = monthCardSpent + monthFixedSpent + monthUnexpected + monthCash;
 
     if (!isFutureMonth) {
       runningAccumulatedSpent += monthSpent;
       totalYearSpent += monthSpent;
       totalYearIncome += monthIncome;
+      totalYearCash += monthCash;
 
       for (const p of monthCardPayments) {
         const cName = cardMap.get(p.cardId) || 'Tarjeta de crédito';
         addCategoryExpense('Tarjetas de crédito', cName, Number(p.amount) || 0);
       }
       for (const fp of monthFixedPayments) {
-        addCategoryExpense(fp.cat || 'Otros', fp.name || 'Gasto fijo', Number(fp.amount) || 0);
+        const fpNameLower = (fp.name || '').toLowerCase();
+        const isPersonalOrFun =
+          fpNameLower.includes('gastos personales') ||
+          fpNameLower.includes('salidas') ||
+          fpNameLower.includes('diversi') ||
+          fpNameLower.includes('efectivo');
+        const targetCat = isPersonalOrFun ? 'Efectivo (Personal y Diversión)' : (fp.cat || 'Otros');
+        if (isPersonalOrFun) {
+          totalYearCash += Number(fp.amount) || 0;
+        }
+        addCategoryExpense(targetCat, fp.name || 'Gasto fijo', Number(fp.amount) || 0);
       }
       for (const move of monthMoves.filter(m => m.kind === 'imprevisto')) {
         addCategoryExpense(
           move.cat ? `Imprevistos (${move.cat})` : 'Imprevistos',
-          move.description || 'Gasto imprevisto',
+          move.name || move.description || 'Gasto imprevisto',
+          Number(move.amount) || 0
+        );
+      }
+      for (const move of monthMoves.filter(m => m.kind === 'efectivo')) {
+        addCategoryExpense(
+          'Efectivo (Personal y Diversión)',
+          move.name || move.cat || 'Dinero para mí en efectivo',
           Number(move.amount) || 0
         );
       }
@@ -691,6 +713,7 @@ export function calculateAnnualSummary({
     year: Number(year),
     totalYearSpent,
     totalYearIncome,
+    totalYearCash,
     yearBalance: totalYearIncome - totalYearSpent,
     monthlyAverageSpent,
     categoriesList,
